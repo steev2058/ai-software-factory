@@ -3,8 +3,9 @@ import json
 import os
 import re
 import time
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 
 import requests
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Update
@@ -82,15 +83,105 @@ def run_project(project_id: str, env: Dict[str, str]) -> Dict[str, Any]:
     return {'code': r.status_code, 'data': data}
 
 
-def read_status(project_id: str) -> str:
-    p = PROJECTS_ROOT / project_id / 'state' / 'status.json'
-    if not p.exists():
-        return 'لا يوجد status.json بعد.'
+def _parse_iso(ts: str):
+    if not ts:
+        return None
     try:
-        d = json.loads(p.read_text())
+        return datetime.fromisoformat(ts.replace('Z', '+00:00'))
     except Exception:
-        return p.read_text()[:400]
-    return json.dumps(d, ensure_ascii=False, indent=2)
+        return None
+
+
+def project_progress(project_id: str) -> Dict[str, Any]:
+    p = PROJECTS_ROOT / project_id
+    status_p = p / 'state' / 'status.json'
+    spec_p = p / 'project_spec.md'
+    repo_p = p / 'repo'
+    zip_p = p / f'{project_id}.zip'
+    logs_p = p / 'logs' / 'build.log'
+
+    phase = 'NOT_STARTED'
+    updated_at = None
+    if status_p.exists():
+        try:
+            s = json.loads(status_p.read_text())
+            phase = (s.get('phase') or 'RUNNING').upper()
+            updated_at = s.get('updated_at')
+        except Exception:
+            phase = 'RUNNING'
+
+    # milestones
+    milestones: List[Tuple[str, bool]] = [
+        ('المواصفات محفوظة', spec_p.exists()),
+        ('بدء التنفيذ', phase in ('RUNNING', 'PASSED', 'FAILED')),
+        ('بناء الملفات الأساسية', repo_p.exists() and any(repo_p.rglob('*'))),
+        ('تسجيل اللوج', logs_p.exists()),
+        ('إنشاء ملف التسليم ZIP', zip_p.exists()),
+        ('اكتمال التنفيذ', phase == 'PASSED'),
+    ]
+
+    weights = [10, 15, 25, 15, 20, 15]
+    percent = 0
+    for i, (_, done) in enumerate(milestones):
+        if done:
+            percent += weights[i]
+
+    if phase == 'FAILED':
+        percent = max(percent, 35)
+    if phase == 'PASSED':
+        percent = 100
+
+    # ETA heuristic (dynamic and practical)
+    now = datetime.now(timezone.utc)
+    created_ts = None
+    if p.exists():
+        created_ts = datetime.fromtimestamp(p.stat().st_mtime, tz=timezone.utc)
+    updated = _parse_iso(updated_at) if updated_at else None
+    ref = updated or created_ts or now
+    elapsed_min = max(1, int((now - ref).total_seconds() / 60)) if ref else 1
+
+    if phase == 'PASSED':
+        eta = 'خلص ✅'
+    elif phase == 'FAILED':
+        eta = 'متوقف بسبب خطأ ❌'
+    elif percent < 20:
+        eta = 'تقريباً 12-18 دقيقة'
+    elif percent < 40:
+        eta = 'تقريباً 8-12 دقيقة'
+    elif percent < 60:
+        eta = 'تقريباً 5-8 دقائق'
+    elif percent < 80:
+        eta = 'تقريباً 3-5 دقائق'
+    else:
+        eta = 'تقريباً 1-3 دقائق'
+
+    done_list = [name for name, ok in milestones if ok]
+    pending_list = [name for name, ok in milestones if not ok]
+
+    return {
+        'phase': phase,
+        'percent': min(100, max(0, percent)),
+        'eta': eta,
+        'done': done_list,
+        'pending': pending_list,
+        'updated_at': updated_at,
+        'elapsed_hint_min': elapsed_min,
+    }
+
+
+def format_progress(project_id: str) -> str:
+    pr = project_progress(project_id)
+    done = '\n'.join([f'✅ {x}' for x in pr['done'][:6]]) or '—'
+    pending = '\n'.join([f'⏳ {x}' for x in pr['pending'][:4]]) or '—'
+    return (
+        f"📊 حالة المشروع: {project_id}\n"
+        f"• الحالة: {pr['phase']}\n"
+        f"• نسبة الإنجاز: {pr['percent']}%\n"
+        f"• الوقت التقديري المتبقي: {pr['eta']}\n"
+        f"• آخر تحديث: {pr['updated_at'] or 'غير متوفر'}\n\n"
+        f"المنجز:\n{done}\n\n"
+        f"المتبقي:\n{pending}"
+    )
 
 
 MAIN_KB = ReplyKeyboardMarkup(
@@ -136,7 +227,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data.startswith('status:'):
         pid = data.split(':', 1)[1]
-        await q.edit_message_text(f"📊 حالة {pid}\n```\n{read_status(pid)}\n```", parse_mode='Markdown')
+        await q.edit_message_text(format_progress(pid))
         return
 
 
@@ -187,7 +278,11 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not ids:
             await update.message.reply_text('ما في مشاريع بعد.', reply_markup=MAIN_KB)
             return
-        await update.message.reply_text('آخر المشاريع:\n' + '\n'.join(f"- {x}" for x in ids), reply_markup=MAIN_KB)
+        lines = []
+        for x in ids:
+            pr = project_progress(x)
+            lines.append(f"- {x} | {pr['phase']} | {pr['percent']}%")
+        await update.message.reply_text('آخر المشاريع:\n' + '\n'.join(lines), reply_markup=MAIN_KB)
         return
 
     if msg == '📊 حالة المشروع':
