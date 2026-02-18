@@ -49,7 +49,6 @@ services:
       - /srv/ai-software-factory/.env
     environment:
       - PROJECTS_ROOT=/data/projects
-      - N8N_WEBHOOK_URL=http://asf-n8n:5678/webhook/run-project
     volumes:
       - /srv/ai-software-factory/projects:/data/projects
 
