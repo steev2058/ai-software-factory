@@ -13,6 +13,10 @@ export type ProjectSummary = {
   hints: string[];
   zipPath?: string;
   githubBranch?: string;
+  progress: number;
+  eta: string;
+  done: string[];
+  pending: string[];
 };
 
 export function safeReadJson(filePath: string): any | null {
@@ -42,6 +46,16 @@ export function detectZip(projectPath: string, id: string): string | undefined {
     if (zips.length) return path.join(deliv, zips[0]);
   }
   return undefined;
+}
+
+function estimateEta(progress: number, status: ProjectStatus): string {
+  if (status === 'PASSED') return 'Done ✅';
+  if (status === 'FAILED') return 'Blocked (failed) ❌';
+  if (progress < 20) return '≈ 12-18 min';
+  if (progress < 40) return '≈ 8-12 min';
+  if (progress < 60) return '≈ 5-8 min';
+  if (progress < 80) return '≈ 3-5 min';
+  return '≈ 1-3 min';
 }
 
 export function computeStatus(id: string): ProjectSummary {
@@ -93,7 +107,24 @@ export function computeStatus(id: string): ProjectSummary {
   const stack = specJson?.stack;
   const updatedAt = statusJson?.updated_at;
 
-  return { id, status, stack, updatedAt, hints, zipPath, githubBranch: branch };
+  const milestones: Array<{ label: string; ok: boolean; weight: number }> = [
+    { label: 'Spec saved', ok: !!specJson, weight: 10 },
+    { label: 'Execution started', ok: status === 'RUNNING' || status === 'PASSED' || status === 'FAILED', weight: 15 },
+    { label: 'Repo scaffolded', ok: fs.existsSync(path.join(p, 'repo')) && fs.readdirSync(path.join(p, 'repo')).length > 0, weight: 25 },
+    { label: 'Build logs generated', ok: fs.existsSync(path.join(p, 'logs', 'build.log')), weight: 15 },
+    { label: 'ZIP generated', ok: !!zipPath, weight: 20 },
+    { label: 'Execution completed', ok: status === 'PASSED', weight: 15 },
+  ];
+
+  let progress = milestones.reduce((sum, m) => sum + (m.ok ? m.weight : 0), 0);
+  if (status === 'FAILED') progress = Math.max(progress, 35);
+  if (status === 'PASSED') progress = 100;
+
+  const done = milestones.filter((m) => m.ok).map((m) => m.label);
+  const pending = milestones.filter((m) => !m.ok).map((m) => m.label);
+  const eta = estimateEta(progress, status);
+
+  return { id, status, stack, updatedAt, hints, zipPath, githubBranch: branch, progress, eta, done, pending };
 }
 
 export function getProjectDetails(id: string) {

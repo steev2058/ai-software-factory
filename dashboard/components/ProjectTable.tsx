@@ -54,6 +54,8 @@ export default function ProjectTable({ projects, onRefresh }: { projects: any[];
             <tr>
               <th className="p-2">Project</th>
               <th>Status</th>
+              <th>Progress</th>
+              <th>ETA</th>
               <th>Stack</th>
               <th>Updated</th>
               <th className="p-2">Actions</th>
@@ -66,6 +68,13 @@ export default function ProjectTable({ projects, onRefresh }: { projects: any[];
                 <tr key={p.id} className="border-t hover:bg-slate-50">
                   <td className="p-2"><Link className="text-blue-600" href={`/projects/${p.id}`}>{p.id}</Link></td>
                   <td><StatusBadge status={p.status} /></td>
+                  <td className="min-w-[180px] pr-2">
+                    <div className="h-2 w-full bg-slate-200 rounded overflow-hidden">
+                      <div className="h-2 bg-blue-600" style={{ width: `${Math.max(0, Math.min(100, p.progress || 0))}%` }} />
+                    </div>
+                    <div className="text-xs text-slate-600 mt-1">{p.progress ?? 0}%</div>
+                  </td>
+                  <td className="text-xs text-slate-700">{p.eta || '-'}</td>
                   <td>{p.stack || '-'}</td>
                   <td>{p.updatedAt || '-'}</td>
                   <td className="p-2 space-x-1">
