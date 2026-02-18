@@ -3,6 +3,7 @@ import json
 import os
 import re
 import time
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, List, Tuple
@@ -30,8 +31,12 @@ def load_env(path: Path) -> Dict[str, str]:
 def ensure_state() -> Dict[str, Any]:
     if not STATE_FILE.exists():
         STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        STATE_FILE.write_text(json.dumps({'chats': {}}, ensure_ascii=False, indent=2))
-    return json.loads(STATE_FILE.read_text())
+        STATE_FILE.write_text(json.dumps({'chats': {}, 'watch': {}, 'last_notified': {}}, ensure_ascii=False, indent=2))
+    st = json.loads(STATE_FILE.read_text())
+    st.setdefault('chats', {})
+    st.setdefault('watch', {})
+    st.setdefault('last_notified', {})
+    return st
 
 
 def save_state(state: Dict[str, Any]):
@@ -171,12 +176,14 @@ def project_progress(project_id: str) -> Dict[str, Any]:
 
 def format_progress(project_id: str) -> str:
     pr = project_progress(project_id)
+    bar_fill = max(0, min(10, int(round((pr['percent'] or 0) / 10))))
+    bar = '█' * bar_fill + '░' * (10 - bar_fill)
     done = '\n'.join([f'✅ {x}' for x in pr['done'][:6]]) or '—'
     pending = '\n'.join([f'⏳ {x}' for x in pr['pending'][:4]]) or '—'
     return (
         f"📊 حالة المشروع: {project_id}\n"
         f"• الحالة: {pr['phase']}\n"
-        f"• نسبة الإنجاز: {pr['percent']}%\n"
+        f"• التقدم: {bar} {pr['percent']}%\n"
         f"• الوقت التقديري المتبقي: {pr['eta']}\n"
         f"• آخر تحديث: {pr['updated_at'] or 'غير متوفر'}\n\n"
         f"المنجز:\n{done}\n\n"
@@ -221,6 +228,9 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pid = data.split(':', 1)[1]
         res = run_project(pid, env)
         chat['last_project_id'] = pid
+        st['watch'].setdefault(pid, [])
+        if chat_id not in st['watch'][pid]:
+            st['watch'][pid].append(chat_id)
         save_state(st)
         await q.edit_message_text(f"🚀 تشغيل {pid}\nHTTP {res['code']}\n{json.dumps(res['data'], ensure_ascii=False)}")
         return
@@ -229,6 +239,42 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pid = data.split(':', 1)[1]
         await q.edit_message_text(format_progress(pid))
         return
+
+
+def monitor_notifications(token: str):
+    api = f"https://api.telegram.org/bot{token}/sendMessage"
+    while True:
+        try:
+            st = ensure_state()
+            watch = st.get('watch', {})
+            last = st.get('last_notified', {})
+
+            for pid, chats in list(watch.items()):
+                if not chats:
+                    continue
+                pr = project_progress(pid)
+                phase = pr.get('phase', 'UNKNOWN')
+
+                if phase in ('PASSED', 'FAILED') and last.get(pid) != phase:
+                    text = (
+                        f"🔔 تحديث المشروع {pid}\n"
+                        f"الحالة: {phase}\n"
+                        f"التقدم: {pr.get('percent', 0)}%\n"
+                        f"التقدير: {pr.get('eta', '-')}"
+                    )
+                    for cid in chats:
+                        try:
+                            requests.post(api, json={'chat_id': int(cid), 'text': text}, timeout=10)
+                        except Exception:
+                            pass
+                    last[pid] = phase
+
+            st['last_notified'] = last
+            save_state(st)
+        except Exception:
+            pass
+
+        time.sleep(60)
 
 
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -247,6 +293,9 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         create_project(pid, '')
         chat['last_project_id'] = pid
         chat['pending_spec_for'] = pid
+        st['watch'].setdefault(pid, [])
+        if chat_id not in st['watch'][pid]:
+            st['watch'][pid].append(chat_id)
         save_state(st)
         await update.message.reply_text(
             f"✅ تم إنشاء مشروع: {pid}\n\nأرسل الآن وصف المشروع/المواصفات في رسالة واحدة وأنا أحفظها مباشرة.",
@@ -308,6 +357,9 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pid = mk_project_id()
         create_project(pid, msg)
         chat['last_project_id'] = pid
+        st['watch'].setdefault(pid, [])
+        if chat_id not in st['watch'][pid]:
+            st['watch'][pid].append(chat_id)
         save_state(st)
         await update.message.reply_text(f"✅ أنشأت مشروع جديد وحفظت المواصفات: {pid}\nاضغط 🚀 تشغيل مشروع", reply_markup=MAIN_KB)
         return
@@ -328,6 +380,9 @@ def main():
     app.add_handler(CommandHandler('help', help_cmd))
     app.add_handler(CallbackQueryHandler(on_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
+
+    t = threading.Thread(target=monitor_notifications, args=(token,), daemon=True)
+    t.start()
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
