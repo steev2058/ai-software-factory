@@ -1,0 +1,110 @@
+{
+  "name": "Smart Model Router",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawType = ($json.agent_type || '').toString().trim().toLowerCase();\nconst modelMap = { pm:'deepseek/deepseek-chat', frontend:'anthropic/claude-3.5-sonnet', backend:'mistral/devstral', db:'deepseek/deepseek-chat', qa:'mistral/devstral', devops:'mistral/devstral', marketing:'anthropic/claude' };\nconst fallbackByModel = { 'mistral/devstral':'deepseek/deepseek-chat', 'anthropic/claude-3.5-sonnet':'deepseek/deepseek-chat', 'anthropic/claude':'deepseek/deepseek-chat', 'deepseek/deepseek-chat':'mimov2' };\nconst selectedModel = modelMap[rawType] || 'deepseek/deepseek-chat';\nconst fallbackChain = [];\nlet current = selectedModel;\nfor (let i=0;i<3;i++){ const next = fallbackByModel[current]; if(!next || fallbackChain.includes(next)) break; fallbackChain.push(next); current = next; }\nreturn [{ json: { ...$json, agent_type: rawType || 'pm', model: selectedModel, fallback: fallbackChain[0] || null, fallback_chain: fallbackChain, openrouter_url:'https://openrouter.ai/api/v1/chat/completions' } }];"
+      },
+      "id": "router-function",
+      "name": "Model Router Function",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "seconds"
+      },
+      "id": "wait-rate-limit",
+      "name": "Wait (Rate Limit)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.openrouter_url}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.OPENROUTER_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "https://your-domain-or-vps"
+            },
+            {
+              "name": "X-Title",
+              "value": "AI Software Factory"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": $json.model,\n  \"messages\": $json.messages || [{ role: 'user', content: $json.task || 'No task provided' }],\n  \"temperature\": 0.2\n}"
+      },
+      "id": "openrouter-request",
+      "name": "OpenRouter Chat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Model Router Function",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Model Router Function": {
+      "main": [
+        [
+          {
+            "node": "Wait (Rate Limit)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Rate Limit)": {
+      "main": [
+        [
+          {
+            "node": "OpenRouter Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "1"
+}
