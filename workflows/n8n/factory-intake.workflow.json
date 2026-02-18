@@ -1,0 +1,412 @@
+{
+  "name": "Factory-Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = ($json.message?.text || '').trim();\nconst chatId = $json.message?.chat?.id;\nconst msgId = $json.message?.message_id;\nconst now = new Date();\n\nfunction makeProjectId() {\n  const ts = now.toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);\n  const rnd = Math.random().toString(36).slice(2, 6);\n  return `prj_${ts}_${rnd}`;\n}\n\nconst isNew = /^\\/new(\\s+.*)?$/i.test(text);\nconst isSpec = /^\\/spec(\\s+.+)$/i.test(text);\n\nlet command = 'unknown';\nlet specText = '';\nif (isNew) command = 'new';\nif (isSpec) {\n  command = 'spec';\n  specText = text.replace(/^\\/spec\\s+/i, '').trim();\n}\n\nreturn [{\n  json: {\n    command,\n    text,\n    chat_id: chatId,\n    message_id: msgId,\n    spec_text: specText,\n    project_id: makeProjectId()\n  }\n}];"
+      },
+      "id": "parse-command",
+      "name": "Parse Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        430,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.command}}",
+                    "rightValue": "new",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.command}}",
+                    "rightValue": "spec",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-command",
+      "name": "Switch Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        680,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=mkdir -p /data/projects/{{$json.project_id}}/{tasks,state,repo,logs} && touch /data/projects/{{$json.project_id}}/project_spec.md"
+      },
+      "id": "create-folder-structure",
+      "name": "Create Folder Structure",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{$json.chat_id}}",
+        "text": "=✅ Project initialized\nproject_id: {{$json.project_id}}\n\nUse /spec <requirements> next."
+      },
+      "id": "reply-new",
+      "name": "Reply /new",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1190,
+        190
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "seconds"
+      },
+      "id": "wait-rate-limit-spec",
+      "name": "Wait (Rate Limit)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        930,
+        430
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.OPENROUTER_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "https://ai-software-factory.local"
+            },
+            {
+              "name": "X-Title",
+              "value": "AI Software Factory"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"deepseek/deepseek-chat\",\n  \"temperature\": 0.1,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are PM agent. Return STRICT JSON only. Schema: {\\\"stack\\\":\\\"nextjs|laravel|flutter\\\",\\\"prd\\\":\\\"string\\\",\\\"tasks\\\":[{\\\"title\\\":\\\"string\\\",\\\"description\\\":\\\"string\\\"}]}. No markdown, no extra text.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{$json.spec_text}}\"\n    }\n  ]\n}"
+      },
+      "id": "pm-agent-deepseek",
+      "name": "PM Agent (DeepSeek)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1180,
+        430
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const src = $json;\nconst content = src.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry {\n  parsed = JSON.parse(content);\n} catch (e) {\n  parsed = { stack: 'nextjs', prd: 'Fallback PRD due to invalid JSON', tasks: [] };\n}\n\nconst validStacks = ['nextjs', 'laravel', 'flutter'];\nif (!validStacks.includes(parsed.stack)) parsed.stack = 'nextjs';\nif (!Array.isArray(parsed.tasks)) parsed.tasks = [];\n\nreturn [{ json: { ...$item(0).$node['Parse Command'].json, pm_output: parsed } }];"
+      },
+      "id": "parse-pm-json",
+      "name": "Parse PM JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1430,
+        430
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=mkdir -p /data/projects/{{$json.project_id}}/{tasks,state,repo,logs} && printf '%s\n' '{{JSON.stringify($json.pm_output, null, 2).replace(/\"/g, '\\\\"')}}' > /data/projects/{{$json.project_id}}/state/spec.json && printf '%s\n' 'Stack: {{$json.pm_output.stack}}\n\nPRD:\n{{$json.pm_output.prd}}' > /data/projects/{{$json.project_id}}/project_spec.md"
+      },
+      "id": "save-project-spec",
+      "name": "Save project_spec.md",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        430
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const tasks = $json.pm_output?.tasks || [];\nconst pid = $json.project_id;\nreturn tasks.map((t, i) => ({ json: { project_id: pid, idx: i + 1, title: t.title || `Task ${i + 1}`, description: t.description || '' , chat_id: $json.chat_id, stack: $json.pm_output?.stack || 'nextjs' } }));"
+      },
+      "id": "expand-tasks",
+      "name": "Expand Tasks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1930,
+        430
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=printf '%s\n' '# {{$json.title}}\n\n{{$json.description}}' > /data/projects/{{$json.project_id}}/tasks/{{String($json.idx).padStart(2,'0')}}_{{($json.title || 'task').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')}}.md"
+      },
+      "id": "save-task-md",
+      "name": "Save tasks/*.md",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2170,
+        430
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex"
+      },
+      "id": "collect",
+      "name": "Collect",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        2410,
+        430
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{$json.chat_id}}",
+        "text": "=✅ Spec ready\nproject_id: {{$json.project_id}}\nstack: {{$json.stack || $json.pm_output?.stack}}\n\nRun next: /run {{$json.project_id}}"
+      },
+      "id": "reply-spec",
+      "name": "Reply /spec",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        430
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{$json.chat_id}}",
+        "text": "=Unknown command. Use:\n/new\n/spec <requirements>"
+      },
+      "id": "reply-unknown",
+      "name": "Reply Unknown",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        930,
+        650
+      ]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Command": {
+      "main": [
+        [
+          {
+            "node": "Switch Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Command": {
+      "main": [
+        [
+          {
+            "node": "Create Folder Structure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait (Rate Limit)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Unknown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Folder Structure": {
+      "main": [
+        [
+          {
+            "node": "Reply /new",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Rate Limit)": {
+      "main": [
+        [
+          {
+            "node": "PM Agent (DeepSeek)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PM Agent (DeepSeek)": {
+      "main": [
+        [
+          {
+            "node": "Parse PM JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse PM JSON": {
+      "main": [
+        [
+          {
+            "node": "Save project_spec.md",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save project_spec.md": {
+      "main": [
+        [
+          {
+            "node": "Expand Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Tasks": {
+      "main": [
+        [
+          {
+            "node": "Save tasks/*.md",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save tasks/*.md": {
+      "main": [
+        [
+          {
+            "node": "Collect",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect": {
+      "main": [
+        [
+          {
+            "node": "Reply /spec",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "1"
+}
