@@ -1,0 +1,44 @@
+[
+  {
+    "id": "p1",
+    "name": "iPhone 15 Pro Max",
+    "price": 1199,
+    "image": "https://picsum.photos/300?random=11",
+    "description": "6.7-inch display, A17 Pro chip, 256GB storage, pro-grade cameras."
+  },
+  {
+    "id": "p2",
+    "name": "Samsung Galaxy S24 Ultra",
+    "price": 1249,
+    "image": "https://picsum.photos/300?random=12",
+    "description": "Flagship Android experience with S Pen, AI tools, and premium camera system."
+  },
+  {
+    "id": "p3",
+    "name": "Google Pixel 8 Pro",
+    "price": 999,
+    "image": "https://picsum.photos/300?random=13",
+    "description": "Pure Android with advanced computational photography and smooth performance."
+  },
+  {
+    "id": "p4",
+    "name": "MacBook Air M3",
+    "price": 1399,
+    "image": "https://picsum.photos/300?random=14",
+    "description": "Lightweight laptop with Apple M3 chip, all-day battery, and silent design."
+  },
+  {
+    "id": "p5",
+    "name": "Dell XPS 13",
+    "price": 1299,
+    "image": "https://picsum.photos/300?random=15",
+    "description": "Compact premium ultrabook with InfinityEdge display and strong productivity power."
+  },
+  {
+    "id": "p6",
+    "name": "Lenovo Legion 5",
+    "price": 1499,
+    "image": "https://picsum.photos/300?random=16",
+    "description": "Gaming-ready laptop with high-refresh display and RTX-class graphics performance."
+  }
+]
