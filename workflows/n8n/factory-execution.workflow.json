@@ -147,7 +147,7 @@
     },
     {
       "parameters": {
-        "command": "=python3 - <<'PY'\nimport os,re\npid='{{$json.project_id}}'\nagent='{{$json.agent_type}}'\ntext='''{{$json.choices[0].message.content.replace("'''","\"\"\"") if $json.choices else ''}}'''\nroot=f'/data/projects/{pid}/repo'\nos.makedirs(root,exist_ok=True)\nfor m in re.finditer(r'```([^\\n`]+)\\n([\\s\\S]*?)```', text):\n    path=m.group(1).strip()\n    code=m.group(2)\n    full=os.path.normpath(os.path.join(root,path))\n    if not full.startswith(root):\n        continue\n    os.makedirs(os.path.dirname(full),exist_ok=True)\n    open(full,'w',encoding='utf-8').write(code)\nopen(f'/data/projects/{pid}/logs/{agent}.patch.log','w',encoding='utf-8').write(text)\nprint('ok')\nPY"
+        "command": "=python3 - <<'PY'\nimport os,re\npid='{{$json.project_id}}'\nagent='{{$json.agent_type}}'\ntext='''{{$json.choices[0].message.content.replace(\"'''\",\"\\\"\\\"\\\"\") if $json.choices else ''}}'''\nroot=f'/data/projects/{pid}/repo'\nos.makedirs(root,exist_ok=True)\nfor m in re.finditer(r'```([^\\n`]+)\\n([\\s\\S]*?)```', text):\n    path=m.group(1).strip()\n    code=m.group(2)\n    full=os.path.normpath(os.path.join(root,path))\n    if not full.startswith(root):\n        continue\n    os.makedirs(os.path.dirname(full),exist_ok=True)\n    open(full,'w',encoding='utf-8').write(code)\nopen(f'/data/projects/{pid}/logs/{agent}.patch.log','w',encoding='utf-8').write(text)\nprint('ok')\nPY"
       },
       "id": "apply-agent-patches",
       "name": "Apply Agent Patches",
@@ -207,7 +207,7 @@
     },
     {
       "parameters": {
-        "command": "=python3 - <<'PY'\nimport os,re\npid='{{$json.project_id}}'\ntext='''{{$json.choices[0].message.content.replace("'''","\"\"\"") if $json.choices else ''}}'''\nroot=f'/data/projects/{pid}/repo'\nfor m in re.finditer(r'```([^\\n`]+)\\n([\\s\\S]*?)```', text):\n    path=m.group(1).strip(); code=m.group(2)\n    full=os.path.normpath(os.path.join(root,path))\n    if full.startswith(root):\n      os.makedirs(os.path.dirname(full),exist_ok=True); open(full,'w',encoding='utf-8').write(code)\nopen(f'/data/projects/{pid}/logs/qa1.patch.log','w',encoding='utf-8').write(text)\nprint('ok')\nPY"
+        "command": "=python3 - <<'PY'\nimport os,re\npid='{{$json.project_id}}'\ntext='''{{$json.choices[0].message.content.replace(\"'''\",\"\\\"\\\"\\\"\") if $json.choices else ''}}'''\nroot=f'/data/projects/{pid}/repo'\nfor m in re.finditer(r'```([^\\n`]+)\\n([\\s\\S]*?)```', text):\n    path=m.group(1).strip(); code=m.group(2)\n    full=os.path.normpath(os.path.join(root,path))\n    if full.startswith(root):\n      os.makedirs(os.path.dirname(full),exist_ok=True); open(full,'w',encoding='utf-8').write(code)\nopen(f'/data/projects/{pid}/logs/qa1.patch.log','w',encoding='utf-8').write(text)\nprint('ok')\nPY"
       },
       "id": "apply-qa-1",
       "name": "Apply QA #1",
@@ -246,7 +246,7 @@
     },
     {
       "parameters": {
-        "command": "=python3 - <<'PY'\nimport os,re\npid='{{$json.project_id}}'\ntext='''{{$json.choices[0].message.content.replace("'''","\"\"\"") if $json.choices else ''}}'''\nroot=f'/data/projects/{pid}/repo'\nfor m in re.finditer(r'```([^\\n`]+)\\n([\\s\\S]*?)```', text):\n    path=m.group(1).strip(); code=m.group(2)\n    full=os.path.normpath(os.path.join(root,path))\n    if full.startswith(root):\n      os.makedirs(os.path.dirname(full),exist_ok=True); open(full,'w',encoding='utf-8').write(code)\nopen(f'/data/projects/{pid}/logs/qa2.patch.log','w',encoding='utf-8').write(text)\nprint('ok')\nPY"
+        "command": "=python3 - <<'PY'\nimport os,re\npid='{{$json.project_id}}'\ntext='''{{$json.choices[0].message.content.replace(\"'''\",\"\\\"\\\"\\\"\") if $json.choices else ''}}'''\nroot=f'/data/projects/{pid}/repo'\nfor m in re.finditer(r'```([^\\n`]+)\\n([\\s\\S]*?)```', text):\n    path=m.group(1).strip(); code=m.group(2)\n    full=os.path.normpath(os.path.join(root,path))\n    if full.startswith(root):\n      os.makedirs(os.path.dirname(full),exist_ok=True); open(full,'w',encoding='utf-8').write(code)\nopen(f'/data/projects/{pid}/logs/qa2.patch.log','w',encoding='utf-8').write(text)\nprint('ok')\nPY"
       },
       "id": "apply-qa-2",
       "name": "Apply QA #2",
@@ -256,7 +256,7 @@
     },
     {
       "parameters": {
-        "command": "=set -e\nP=/data/projects/{{$json.project_id}}\nZIP=\"$P/{{$json.project_id}}.zip\"\n( cd \"$P\" && zip -rq \"$ZIP\" repo repo_tree.txt project_spec.md tasks state logs )\ncd \"$P/repo\"\ngit init -b main >/dev/null 2>&1 || true\ngit add .\ngit commit -m 'deliver {{$json.project_id}}' >/dev/null 2>&1 || true\ngit branch -M 'deliver/{{$json.project_id}}'\nif [ -n \"$GITHUB_TOKEN\" ] && [ -n \"$GITHUB_REPO\" ]; then\n  git remote remove origin >/dev/null 2>&1 || true\n  git remote add origin \"https://$GITHUB_TOKEN@github.com/$GITHUB_REPO.git\"\n  git push -u origin 'deliver/{{$json.project_id}}' || true\nfi\nprintf '{\"zip_path\":\"%s\",\"branch\":\"deliver/{{$json.project_id}}\",\"github\":\"https://github.com/%s/tree/deliver/{{$json.project_id}}\"}' \"$ZIP\" \"${GITHUB_REPO:-steev2058/ai-software-factory}\""
+        "command": "=set -e\nP=/data/projects/{{$json.project_id}}\nZIP=\"$P/{{$json.project_id}}.zip\"\n( cd \"$P\" && zip -rq \"$ZIP\" repo repo_tree.txt project_spec.md tasks state logs )\ncd \"$P/repo\"\n# GitHub automation via PAT from .env\n# required: GITHUB_PAT, GITHUB_REPO\ngit init >/dev/null 2>&1 || true\ngit config user.name \"AI Software Factory\"\ngit config user.email \"factory@local\"\nBR=\"deliver/{{$json.project_id}}\"\ngit checkout -B \"$BR\"\ngit add .\ngit commit -m \"deliver\" >/dev/null 2>&1 || true\nif [ -n \"$GITHUB_PAT\" ] && [ -n \"$GITHUB_REPO\" ]; then\n  git remote remove origin >/dev/null 2>&1 || true\n  git remote add origin \"https://$GITHUB_PAT@github.com/$GITHUB_REPO.git\"\n  git push -u origin \"$BR\" || true\nfi\nprintf '{\"zip_path\":\"%s\",\"branch\":\"%s\",\"github\":\"https://github.com/%s/tree/%s\"}' \"$ZIP\" \"$BR\" \"${GITHUB_REPO:-steev2058/ai-software-factory}\" \"$BR\""
       },
       "id": "package-and-push",
       "name": "ZIP + Push GitHub",
