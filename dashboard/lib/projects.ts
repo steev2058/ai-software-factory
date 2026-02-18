@@ -15,6 +15,7 @@ export type ProjectSummary = {
   hints: string[];
   zipPath?: string;
   githubBranch?: string;
+  previewUrl?: string;
   progress: number;
   eta: string;
   done: string[];
@@ -68,6 +69,7 @@ export function computeStatus(id: string): ProjectSummary {
   const qaJson = safeReadJson(path.join(p, 'state', 'qa.json'));
   const zipPath = detectZip(p, id);
   const branch = statusJson?.github_branch || (zipPath ? `deliver/${id}` : undefined);
+  const previewUrl = statusJson?.preview_url || (fs.existsSync(path.join(p, 'preview', 'index.html')) ? `https://petsy.company/factory-preview/${id}/preview/index.html` : undefined);
 
   let status: ProjectStatus = 'UNKNOWN';
 
@@ -131,7 +133,7 @@ export function computeStatus(id: string): ProjectSummary {
   const pending = milestones.filter((m) => !m.ok).map((m) => m.label);
   const eta = estimateEta(progress, status);
 
-  return { id, status, stack, updatedAt, lastLogAt, isAlive, hints, zipPath, githubBranch: branch, progress, eta, done, pending };
+  return { id, status, stack, updatedAt, lastLogAt, isAlive, hints, zipPath, githubBranch: branch, previewUrl, progress, eta, done, pending };
 }
 
 export function getProjectDetails(id: string) {

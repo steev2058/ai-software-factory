@@ -39,6 +39,12 @@ export default function ProjectMetaCard({ project }: { project: any }) {
           <button className="text-xs border px-2 py-1 rounded" onClick={() => navigator.clipboard.writeText(github)}>Copy GitHub link</button>
         </div>
       )}
+      {project.previewUrl && (
+        <div className="text-sm space-x-2">
+          <span>Preview:</span>
+          <a className="text-blue-600 underline" href={project.previewUrl} target="_blank">Open online preview</a>
+        </div>
+      )}
       {project.zipPath && (
         <div className="text-sm space-x-2">
           <span>ZIP: <code>{project.zipPath}</code></span>

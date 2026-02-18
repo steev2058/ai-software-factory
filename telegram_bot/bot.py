@@ -265,12 +265,14 @@ def monitor_notifications(token: str):
                         branch = f"deliver/{pid}"
                         dashboard_link = f"http://76.13.151.33:5680/projects/{pid}"
                         zip_link = f"http://76.13.151.33:5680/api/projects/{pid}/zip"
+                        preview_link = f"https://petsy.company/factory-preview/{pid}/preview/index.html"
                         text = (
                             f"🎉 تسليم المشروع جاهز\n"
                             f"• Project: {pid}\n"
                             f"• الحالة: PASSED ✅\n"
                             f"• Branch: {branch}\n"
                             f"• Dashboard: {dashboard_link}\n"
+                            f"• Preview: {preview_link}\n"
                             f"• ZIP: {zip_link}\n\n"
                             f"ملاحظة: رابط الـZIP يتطلب تسجيل دخول الداشبورد."
                         )
