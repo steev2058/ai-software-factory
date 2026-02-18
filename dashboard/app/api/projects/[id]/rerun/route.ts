@@ -24,6 +24,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   fs.mkdirSync(path.join(projectPath, 'repo'), { recursive: true });
   fs.mkdirSync(path.join(projectPath, 'logs'), { recursive: true });
   fs.mkdirSync(path.join(projectPath, 'state'), { recursive: true });
+  fs.mkdirSync(path.join(projectPath, 'tasks'), { recursive: true });
+  [projectPath, 'state', 'logs', 'repo', 'tasks'].forEach((x) => {
+    const p = x === projectPath ? projectPath : path.join(projectPath, x);
+    try { fs.chmodSync(p, 0o777); } catch {}
+  });
 
   fs.writeFileSync(
     path.join(projectPath, 'state', 'status.json'),

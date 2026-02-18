@@ -62,6 +62,11 @@ def create_project(project_id: str, spec: str = ''):
     (p / 'state').mkdir(parents=True, exist_ok=True)
     (p / 'repo').mkdir(parents=True, exist_ok=True)
     (p / 'logs').mkdir(parents=True, exist_ok=True)
+    try:
+        for x in [p, p / 'tasks', p / 'state', p / 'repo', p / 'logs']:
+            os.chmod(x, 0o777)
+    except Exception:
+        pass
     if spec:
         (p / 'project_spec.md').write_text(spec)
     stack = detect_stack(spec) if spec else 'nextjs'
