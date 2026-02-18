@@ -24,10 +24,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     try { fs.chmodSync(p, 0o777); } catch {}
   });
 
+  const statusPath = path.join(projectPath, 'state', 'status.json');
   fs.writeFileSync(
-    path.join(projectPath, 'state', 'status.json'),
+    statusPath,
     JSON.stringify({ phase: 'RUNNING', running: true, updated_at: new Date().toISOString() }, null, 2)
   );
+  try { fs.chmodSync(statusPath, 0o666); } catch {}
 
   const webhook = process.env.N8N_WEBHOOK_URL || 'http://asf-n8n:5678/webhook/run-project';
 

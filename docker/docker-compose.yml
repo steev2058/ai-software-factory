@@ -38,6 +38,8 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - /srv/ai-software-factory/projects:/data/projects
+      - /srv/ai-software-factory/templates:/srv/ai-software-factory/templates:ro
+      - /srv/ai-software-factory/live:/srv/ai-software-factory/live
 
   dashboard:
     build:

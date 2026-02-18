@@ -42,7 +42,13 @@ export default function ProjectMetaCard({ project }: { project: any }) {
       {project.previewUrl && (
         <div className="text-sm space-x-2">
           <span>Preview:</span>
-          <a className="text-blue-600 underline" href={project.previewUrl} target="_blank">Open online preview</a>
+          <a className="text-blue-600 underline" href={project.previewUrl} target="_blank">Open delivery preview</a>
+        </div>
+      )}
+      {project.liveUrl && (
+        <div className="text-sm space-x-2">
+          <span>Live:</span>
+          <a className="text-blue-600 underline" href={project.liveUrl} target="_blank">Open Live Site</a>
         </div>
       )}
       {project.zipPath && (
