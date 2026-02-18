@@ -1,0 +1,17 @@
+# Runtime secrets
+.env
+.env.local
+
+# Generated/workspace projects
+projects/*
+!projects/.gitkeep
+
+# Python / Node artifacts
+__pycache__/
+*.pyc
+node_modules/
+
+# OS/IDE
+.DS_Store
+.vscode/
+.idea/
