@@ -48,6 +48,7 @@ Required minimum:
 - `OPENROUTER_API_KEY`
 - `DASHBOARD_USER`
 - `DASHBOARD_PASS`
+- `N8N_WEBHOOK_URL` (default: `http://asf-n8n:5678/webhook/run-project`)
 
 ## 3) Start Services (Docker)
 
@@ -139,6 +140,10 @@ Features:
 - Computed status per project (`NEW`, `SPEC_READY`, `RUNNING`, `PASSED`, `FAILED`, `UNKNOWN`)
 - Search + status filter
 - Auto refresh (8s) + manual refresh
+- Project actions from UI:
+  - Run project
+  - Re-run project (cleans `repo/` + `logs/`, keeps spec/tasks)
+  - Delete project (with confirmation)
 - Project details page (`/projects/<id>`) with:
   - spec summary
   - logs list + log viewer

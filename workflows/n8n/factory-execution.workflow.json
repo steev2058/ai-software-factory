@@ -18,7 +18,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const text = ($json.message?.text || '').trim();\nconst m = text.match(/^\\/run\\s+([a-zA-Z0-9_\\-]+)/i);\nreturn [{ json: {\n  chat_id: $json.message?.chat?.id,\n  message_id: $json.message?.message_id,\n  command_ok: !!m,\n  project_id: m ? m[1] : null\n}}];"
+        "jsCode": "const text = ($json.message?.text || '').trim();\nconst m = text.match(/^\\/run\\s+([a-zA-Z0-9_\\-]+)/i);\nconst webhookId = ($json.body?.project_id || $json.project_id || '').toString().trim();\nconst projectId = webhookId || (m ? m[1] : null);\nreturn [{ json: {\n  chat_id: $json.message?.chat?.id || null,\n  message_id: $json.message?.message_id || null,\n  command_ok: Boolean(projectId),\n  project_id: projectId\n}}];"
       },
       "id": "parse-run",
       "name": "Parse /run",
@@ -395,6 +395,21 @@
         5170,
         300
       ]
+    },
+    {
+      "parameters": {
+        "path": "run-project",
+        "httpMethod": "POST",
+        "responseMode": "onReceived"
+      },
+      "id": "run-webhook-trigger",
+      "name": "Run Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        180,
+        560
+      ]
     }
   ],
   "connections": {
@@ -652,6 +667,17 @@
         [
           {
             "node": "Reply Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse /run",
             "type": "main",
             "index": 0
           }

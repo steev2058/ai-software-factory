@@ -36,7 +36,7 @@ export default function DashboardPage() {
         </select>
         <button onClick={load} className="border px-3 py-2 rounded bg-white">Refresh</button>
       </div>
-      <ProjectTable projects={filtered} />
+      <ProjectTable projects={filtered} onRefresh={load} />
     </main>
   );
 }

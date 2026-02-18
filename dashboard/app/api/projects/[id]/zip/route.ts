@@ -1,9 +1,15 @@
 export const dynamic = 'force-dynamic';
 import fs from 'fs';
 import path from 'path';
+import { NextRequest } from 'next/server';
 import { PROJECTS_ROOT } from '../../../../../lib/projects';
+import { isValidProjectId, requireBasicAuth } from '../../../../../lib/auth';
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const auth = requireBasicAuth(req);
+  if (!auth.ok) return auth.response;
+  if (!isValidProjectId(params.id)) return new Response('Invalid project id', { status: 400 });
+
   const p1 = path.join(PROJECTS_ROOT, params.id, `${params.id}.zip`);
   const p2 = path.join(PROJECTS_ROOT, params.id, 'deliverables');
   let zipPath = p1;
