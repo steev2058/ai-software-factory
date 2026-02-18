@@ -44,26 +44,27 @@ Required minimum:
 - `TELEGRAM_BOT_TOKEN`
 - `OPENROUTER_API_KEY`
 
-## 3) Start n8n (Docker)
+## 3) Start Services (Docker)
 
-Create `docker/docker-compose.yml` (or use your own stack) and run:
+Run all services (postgres + n8n + dashboard):
 
 ```bash
 cd docker
-docker compose up -d
+docker compose up -d --build
 ```
 
-n8n default UI: `http://localhost:5678`
+- n8n UI: `http://localhost:5678`
+- Factory Dashboard: `http://localhost:5680/dashboard`
 
 ## 4) Import n8n Workflows
 
-Put workflow JSON files inside:
+Workflows are under:
 
 ```text
 workflows/n8n/
 ```
 
-Then import them from n8n UI.
+Import from n8n UI and set required credentials/env (`OPENROUTER_API_KEY`, `GITHUB_PAT`, `GITHUB_REPO`, Telegram credentials).
 
 ## 5) Multi-Agent Pattern (recommended)
 
@@ -94,11 +95,27 @@ scripts/
 
 Telegram bot receives high-level commands like:
 
-- `new project: ecommerce landing page`
-- `update project: add auth`
-- `ship project: <name>`
+- `/new`
+- `/spec <requirements>`
+- `/run <project_id>`
 
-Bot triggers n8n workflow, which fans out work across agents.
+Bot triggers n8n workflows, which fan out work across agents.
+
+## 8) Factory Dashboard Usage
+
+Open: `http://localhost:5680/dashboard`
+
+Features:
+
+- Lists projects from disk (`/srv/ai-software-factory/projects`)
+- Computed status per project (`NEW`, `SPEC_READY`, `RUNNING`, `PASSED`, `FAILED`, `UNKNOWN`)
+- Search + status filter
+- Auto refresh (8s) + manual refresh
+- Project details page (`/projects/<id>`) with:
+  - spec summary
+  - logs list + log viewer
+  - GitHub branch link (`deliver/<project_id>`) and copy button
+  - ZIP path + download endpoint (`/api/projects/:id/zip`)
 
 ## Next Suggested Files
 

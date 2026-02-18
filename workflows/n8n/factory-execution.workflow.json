@@ -67,7 +67,7 @@
     },
     {
       "parameters": {
-        "command": "=set -e\nP=/data/projects/{{$json.project_id}}\n[ -d \"$P\" ]\nmkdir -p \"$P/repo\" \"$P/state\" \"$P/logs\"\nprintf 'PROJECT=%s\\n' '{{$json.project_id}}' > \"$P/state/context.env\"\n( test -f \"$P/project_spec.md\" && cat \"$P/project_spec.md\" ) > \"$P/state/spec_input.md\"\nfind \"$P/tasks\" -type f -name '*.md' | sort > \"$P/state/tasks_list.txt\""
+        "command": "=set -e\nP=/data/projects/{{$json.project_id}}\n[ -d \"$P\" ]\nmkdir -p \"$P/repo\" \"$P/state\" \"$P/logs\"\nprintf 'PROJECT=%s\\n' '{{$json.project_id}}' > \"$P/state/context.env\"\n( test -f \"$P/project_spec.md\" && cat \"$P/project_spec.md\" ) > \"$P/state/spec_input.md\"\nfind \"$P/tasks\" -type f -name '*.md' | sort > \"$P/state/tasks_list.txt\"\nprintf '{\"phase\":\"RUNNING\",\"running\":true,\"updated_at\":\"%s\"}' \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\" > \"$P/state/status.json\""
       },
       "id": "load-project-files",
       "name": "Load Project Files",
@@ -119,7 +119,7 @@
     },
     {
       "parameters": {
-        "command": "=set -e\nP=/data/projects/{{$json.project_id}}\nT='{{$json.template_path}}'\nrm -rf \"$P/repo\"\nmkdir -p \"$P/repo\"\nif [ -d \"$T\" ]; then cp -R \"$T\"/. \"$P/repo\"/; else echo 'Template missing: '$T > \"$P/logs/template.error.log\"; exit 1; fi"
+        "command": "=set -e\nP=/data/projects/{{$json.project_id}}\nT='{{$json.template_path}}'\nrm -rf \"$P/repo\"\nmkdir -p \"$P/repo\"\nif [ -d \"$T\" ]; then cp -R \"$T\"/. \"$P/repo\"/; else printf '{\"phase\":\"FAILED\",\"running\":false,\"reason\":\"template missing\",\"updated_at\":\"%s\"}' \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\" > \"$P/state/status.json\"; echo 'Template missing: '$T > \"$P/logs/template.error.log\"; exit 1; fi"
       },
       "id": "copy-template",
       "name": "Copy Template",
@@ -356,7 +356,7 @@
     },
     {
       "parameters": {
-        "command": "=set -e\nP=/data/projects/{{$json.project_id}}\nZIP=\"$P/{{$json.project_id}}.zip\"\n( cd \"$P\" && zip -rq \"$ZIP\" repo repo_tree.txt project_spec.md tasks state logs )\ncd \"$P/repo\"\n# GitHub automation via PAT from .env\n# required: GITHUB_PAT, GITHUB_REPO\ngit init >/dev/null 2>&1 || true\ngit config user.name \"AI Software Factory\"\ngit config user.email \"factory@local\"\nBR=\"deliver/{{$json.project_id}}\"\ngit checkout -B \"$BR\"\ngit add .\ngit commit -m \"deliver\" >/dev/null 2>&1 || true\nif [ -n \"$GITHUB_PAT\" ] && [ -n \"$GITHUB_REPO\" ]; then\n  git remote remove origin >/dev/null 2>&1 || true\n  git remote add origin \"https://$GITHUB_PAT@github.com/$GITHUB_REPO.git\"\n  git push -u origin \"$BR\" || true\nfi\nprintf '{\"zip_path\":\"%s\",\"branch\":\"%s\",\"github\":\"https://github.com/%s/tree/%s\"}' \"$ZIP\" \"$BR\" \"${GITHUB_REPO:-steev2058/ai-software-factory}\" \"$BR\""
+        "command": "=set -e\nP=/data/projects/{{$json.project_id}}\nZIP=\"$P/{{$json.project_id}}.zip\"\n( cd \"$P\" && python3 - <<'PY'\nimport os,zipfile\nbase=os.getcwd()\nout=os.path.join(base,'{{$json.project_id}}.zip')\nwith zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:\n    for root,_,files in os.walk(base):\n        for f in files:\n            if f.endswith('.zip'): continue\n            p=os.path.join(root,f)\n            z.write(p, os.path.relpath(p, base))\nprint(out)\nPY\n)\ncd \"$P/repo\"\n# GitHub automation via PAT from .env\n# required: GITHUB_PAT, GITHUB_REPO\ngit init >/dev/null 2>&1 || true\ngit config user.name \"AI Software Factory\"\ngit config user.email \"factory@local\"\nBR=\"deliver/{{$json.project_id}}\"\ngit checkout -B \"$BR\"\ngit add .\ngit commit -m \"deliver\" >/dev/null 2>&1 || true\nif [ -n \"$GITHUB_PAT\" ] && [ -n \"$GITHUB_REPO\" ]; then\n  git remote remove origin >/dev/null 2>&1 || true\n  git remote add origin \"https://$GITHUB_PAT@github.com/$GITHUB_REPO.git\"\n  git push -u origin \"$BR\" || true\nfi\nprintf '{\"phase\":\"PASSED\",\"running\":false,\"github_branch\":\"%s\",\"zip\":\"%s\",\"updated_at\":\"%s\"}' \"$BR\" \"$ZIP\" \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\" > \"$P/state/status.json\"\nprintf '{\"zip_path\":\"%s\",\"branch\":\"%s\",\"github\":\"https://github.com/%s/tree/%s\"}' \"$ZIP\" \"$BR\" \"${GITHUB_REPO:-steev2058/ai-software-factory}\" \"$BR\""
       },
       "id": "package-and-push",
       "name": "ZIP + Push GitHub",
