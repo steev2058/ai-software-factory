@@ -6,6 +6,10 @@
 projects/*
 !projects/.gitkeep
 
+# Generated live static deploys
+live/*
+!live/.gitkeep
+
 # Python / Node artifacts
 __pycache__/
 *.pyc
