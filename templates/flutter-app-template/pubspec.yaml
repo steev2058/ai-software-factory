@@ -1,0 +1,9 @@
+name: flutter_app_template
+description: Starter app with auth routing and API client
+publish_to: "none"
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+dependencies:
+  flutter:
+    sdk: flutter
+  dio: ^5.5.0+1

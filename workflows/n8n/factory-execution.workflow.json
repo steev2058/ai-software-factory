@@ -2,12 +2,19 @@
   "name": "Factory-Execution",
   "nodes": [
     {
-      "parameters": { "updates": ["message"] },
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
       "id": "tg-trigger",
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1,
-      "position": [180, 420]
+      "position": [
+        180,
+        420
+      ]
     },
     {
       "parameters": {
@@ -17,13 +24,19 @@
       "name": "Parse /run",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [420, 420]
+      "position": [
+        420,
+        420
+      ]
     },
     {
       "parameters": {
         "conditions": {
           "boolean": [
-            { "value1": "={{$json.command_ok}}", "operation": "isTrue" }
+            {
+              "value1": "={{$json.command_ok}}",
+              "operation": "isTrue"
+            }
           ]
         }
       },
@@ -31,7 +44,10 @@
       "name": "If Valid /run",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [650, 420]
+      "position": [
+        650,
+        420
+      ]
     },
     {
       "parameters": {
@@ -44,7 +60,10 @@
       "name": "Reply Invalid",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [880, 620]
+      "position": [
+        880,
+        620
+      ]
     },
     {
       "parameters": {
@@ -54,7 +73,10 @@
       "name": "Load Project Files",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [900, 300]
+      "position": [
+        900,
+        300
+      ]
     },
     {
       "parameters": {
@@ -64,7 +86,10 @@
       "name": "Detect Stack",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [1120, 300]
+      "position": [
+        1120,
+        300
+      ]
     },
     {
       "parameters": {
@@ -74,7 +99,10 @@
       "name": "Parse Stack",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1330, 300]
+      "position": [
+        1330,
+        300
+      ]
     },
     {
       "parameters": {
@@ -84,17 +112,23 @@
       "name": "Pick Template",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1540, 300]
+      "position": [
+        1540,
+        300
+      ]
     },
     {
       "parameters": {
-        "command": "=set -e\nP=/data/projects/{{$json.project_id}}\nT='{{$json.template_path}}'\nmkdir -p \"$P/repo\"\nif [ -d \"$T\" ]; then cp -R \"$T\"/. \"$P/repo\"/; else echo 'Template not found, continuing with empty repo' > \"$P/logs/template.warn.log\"; fi"
+        "command": "=set -e\nP=/data/projects/{{$json.project_id}}\nT='{{$json.template_path}}'\nrm -rf \"$P/repo\"\nmkdir -p \"$P/repo\"\nif [ -d \"$T\" ]; then cp -R \"$T\"/. \"$P/repo\"/; else echo 'Template missing: '$T > \"$P/logs/template.error.log\"; exit 1; fi"
       },
       "id": "copy-template",
       "name": "Copy Template",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [1770, 300]
+      "position": [
+        1770,
+        300
+      ]
     },
     {
       "parameters": {
@@ -104,7 +138,10 @@
       "name": "Fanout Agents",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, 300]
+      "position": [
+        1980,
+        300
+      ]
     },
     {
       "parameters": {
@@ -114,15 +151,24 @@
       "name": "Model Router",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2200, 300]
+      "position": [
+        2200,
+        300
+      ]
     },
     {
-      "parameters": { "amount": 1, "unit": "seconds" },
+      "parameters": {
+        "amount": 1,
+        "unit": "seconds"
+      },
       "id": "wait-rl",
       "name": "Wait RL",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
-      "position": [2390, 300]
+      "position": [
+        2390,
+        300
+      ]
     },
     {
       "parameters": {
@@ -131,8 +177,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{$env.OPENROUTER_API_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.OPENROUTER_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -143,7 +195,10 @@
       "name": "Agent Call",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2600, 300]
+      "position": [
+        2600,
+        300
+      ]
     },
     {
       "parameters": {
@@ -153,7 +208,10 @@
       "name": "Apply Agent Patches",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [2830, 300]
+      "position": [
+        2830,
+        300
+      ]
     },
     {
       "parameters": {
@@ -164,7 +222,10 @@
       "name": "Join Agent Outputs",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.1,
-      "position": [3060, 300]
+      "position": [
+        3060,
+        300
+      ]
     },
     {
       "parameters": {
@@ -174,15 +235,24 @@
       "name": "Integration + Tests",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [3290, 300]
+      "position": [
+        3290,
+        300
+      ]
     },
     {
-      "parameters": { "amount": 1, "unit": "seconds" },
+      "parameters": {
+        "amount": 1,
+        "unit": "seconds"
+      },
       "id": "wait-qa-1",
       "name": "Wait QA #1",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
-      "position": [3490, 300]
+      "position": [
+        3490,
+        300
+      ]
     },
     {
       "parameters": {
@@ -191,8 +261,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{$env.OPENROUTER_API_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.OPENROUTER_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -203,7 +279,10 @@
       "name": "QA Agent #1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3690, 300]
+      "position": [
+        3690,
+        300
+      ]
     },
     {
       "parameters": {
@@ -213,15 +292,24 @@
       "name": "Apply QA #1",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [3910, 300]
+      "position": [
+        3910,
+        300
+      ]
     },
     {
-      "parameters": { "amount": 1, "unit": "seconds" },
+      "parameters": {
+        "amount": 1,
+        "unit": "seconds"
+      },
       "id": "wait-qa-2",
       "name": "Wait QA #2",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
-      "position": [4100, 300]
+      "position": [
+        4100,
+        300
+      ]
     },
     {
       "parameters": {
@@ -230,8 +318,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{$env.OPENROUTER_API_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.OPENROUTER_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -242,7 +336,10 @@
       "name": "QA Agent #2",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4300, 300]
+      "position": [
+        4300,
+        300
+      ]
     },
     {
       "parameters": {
@@ -252,7 +349,10 @@
       "name": "Apply QA #2",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [4520, 300]
+      "position": [
+        4520,
+        300
+      ]
     },
     {
       "parameters": {
@@ -262,7 +362,10 @@
       "name": "ZIP + Push GitHub",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [4750, 300]
+      "position": [
+        4750,
+        300
+      ]
     },
     {
       "parameters": {
@@ -272,7 +375,10 @@
       "name": "Parse Delivery",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4960, 300]
+      "position": [
+        4960,
+        300
+      ]
     },
     {
       "parameters": {
@@ -285,41 +391,278 @@
       "name": "Reply Done",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [5170, 300]
+      "position": [
+        5170,
+        300
+      ]
     }
   ],
   "connections": {
-    "Telegram Trigger": { "main": [[{ "node": "Parse /run", "type": "main", "index": 0 }]] },
-    "Parse /run": { "main": [[{ "node": "If Valid /run", "type": "main", "index": 0 }]] },
-    "If Valid /run": {
+    "Telegram Trigger": {
       "main": [
-        [{ "node": "Load Project Files", "type": "main", "index": 0 }],
-        [{ "node": "Reply Invalid", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Parse /run",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Load Project Files": { "main": [[{ "node": "Detect Stack", "type": "main", "index": 0 }]] },
-    "Detect Stack": { "main": [[{ "node": "Parse Stack", "type": "main", "index": 0 }]] },
-    "Parse Stack": { "main": [[{ "node": "Pick Template", "type": "main", "index": 0 }]] },
-    "Pick Template": { "main": [[{ "node": "Copy Template", "type": "main", "index": 0 }]] },
-    "Copy Template": { "main": [[{ "node": "Fanout Agents", "type": "main", "index": 0 }]] },
-    "Fanout Agents": { "main": [[{ "node": "Model Router", "type": "main", "index": 0 }]] },
-    "Model Router": { "main": [[{ "node": "Wait RL", "type": "main", "index": 0 }]] },
-    "Wait RL": { "main": [[{ "node": "Agent Call", "type": "main", "index": 0 }]] },
-    "Agent Call": { "main": [[{ "node": "Apply Agent Patches", "type": "main", "index": 0 }]] },
-    "Apply Agent Patches": { "main": [[{ "node": "Join Agent Outputs", "type": "main", "index": 0 }]] },
-    "Join Agent Outputs": { "main": [[{ "node": "Integration + Tests", "type": "main", "index": 0 }]] },
-    "Integration + Tests": { "main": [[{ "node": "Wait QA #1", "type": "main", "index": 0 }]] },
-    "Wait QA #1": { "main": [[{ "node": "QA Agent #1", "type": "main", "index": 0 }]] },
-    "QA Agent #1": { "main": [[{ "node": "Apply QA #1", "type": "main", "index": 0 }]] },
-    "Apply QA #1": { "main": [[{ "node": "Wait QA #2", "type": "main", "index": 0 }]] },
-    "Wait QA #2": { "main": [[{ "node": "QA Agent #2", "type": "main", "index": 0 }]] },
-    "QA Agent #2": { "main": [[{ "node": "Apply QA #2", "type": "main", "index": 0 }]] },
-    "Apply QA #2": { "main": [[{ "node": "ZIP + Push GitHub", "type": "main", "index": 0 }]] },
-    "ZIP + Push GitHub": { "main": [[{ "node": "Parse Delivery", "type": "main", "index": 0 }]] },
-    "Parse Delivery": { "main": [[{ "node": "Reply Done", "type": "main", "index": 0 }]] }
+    "Parse /run": {
+      "main": [
+        [
+          {
+            "node": "If Valid /run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Valid /run": {
+      "main": [
+        [
+          {
+            "node": "Load Project Files",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Invalid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Project Files": {
+      "main": [
+        [
+          {
+            "node": "Detect Stack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Stack": {
+      "main": [
+        [
+          {
+            "node": "Parse Stack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Stack": {
+      "main": [
+        [
+          {
+            "node": "Pick Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Template": {
+      "main": [
+        [
+          {
+            "node": "Copy Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Copy Template": {
+      "main": [
+        [
+          {
+            "node": "Fanout Agents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fanout Agents": {
+      "main": [
+        [
+          {
+            "node": "Model Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Model Router": {
+      "main": [
+        [
+          {
+            "node": "Wait RL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait RL": {
+      "main": [
+        [
+          {
+            "node": "Agent Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent Call": {
+      "main": [
+        [
+          {
+            "node": "Apply Agent Patches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Agent Patches": {
+      "main": [
+        [
+          {
+            "node": "Join Agent Outputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join Agent Outputs": {
+      "main": [
+        [
+          {
+            "node": "Integration + Tests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Integration + Tests": {
+      "main": [
+        [
+          {
+            "node": "Wait QA #1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait QA #1": {
+      "main": [
+        [
+          {
+            "node": "QA Agent #1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "QA Agent #1": {
+      "main": [
+        [
+          {
+            "node": "Apply QA #1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply QA #1": {
+      "main": [
+        [
+          {
+            "node": "Wait QA #2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait QA #2": {
+      "main": [
+        [
+          {
+            "node": "QA Agent #2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "QA Agent #2": {
+      "main": [
+        [
+          {
+            "node": "Apply QA #2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply QA #2": {
+      "main": [
+        [
+          {
+            "node": "ZIP + Push GitHub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZIP + Push GitHub": {
+      "main": [
+        [
+          {
+            "node": "Parse Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Delivery": {
+      "main": [
+        [
+          {
+            "node": "Reply Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "active": false,
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {},
   "versionId": "1"
 }
