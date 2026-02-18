@@ -56,6 +56,7 @@ export default function ProjectTable({ projects, onRefresh }: { projects: any[];
               <th>Status</th>
               <th>Progress</th>
               <th>ETA</th>
+              <th>Heartbeat</th>
               <th>Stack</th>
               <th>Updated</th>
               <th className="p-2">Actions</th>
@@ -75,6 +76,17 @@ export default function ProjectTable({ projects, onRefresh }: { projects: any[];
                     <div className="text-xs text-slate-600 mt-1">{p.progress ?? 0}%</div>
                   </td>
                   <td className="text-xs text-slate-700">{p.eta || '-'}</td>
+                  <td className="text-xs">
+                    {p.status === 'RUNNING' ? (
+                      <span className={p.isAlive ? 'text-green-700' : 'text-amber-700'}>
+                        {p.isAlive ? '🟢 alive' : '🟠 stale'}
+                        <br />
+                        {p.lastLogAt || '-'}
+                      </span>
+                    ) : (
+                      <span className="text-slate-500">-</span>
+                    )}
+                  </td>
                   <td>{p.stack || '-'}</td>
                   <td>{p.updatedAt || '-'}</td>
                   <td className="p-2 space-x-1">

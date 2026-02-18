@@ -11,6 +11,10 @@ export default function ProjectMetaCard({ project }: { project: any }) {
         <div className="h-2 bg-blue-600" style={{ width: `${Math.max(0, Math.min(100, project.progress || 0))}%` }} />
       </div>
       <div>ETA: {project.eta || '-'}</div>
+      <div>
+        Heartbeat: {project.status === 'RUNNING' ? (project.isAlive ? '🟢 alive' : '🟠 stale') : '-'}
+        {project.lastLogAt ? ` (last log: ${project.lastLogAt})` : ''}
+      </div>
       <div>Stack: {project.stack || '-'}</div>
       <div>Updated: {project.updatedAt || '-'}</div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">

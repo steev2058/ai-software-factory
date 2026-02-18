@@ -10,6 +10,8 @@ export type ProjectSummary = {
   status: ProjectStatus;
   stack?: string;
   updatedAt?: string;
+  lastLogAt?: string;
+  isAlive?: boolean;
   hints: string[];
   zipPath?: string;
   githubBranch?: string;
@@ -106,6 +108,11 @@ export function computeStatus(id: string): ProjectSummary {
 
   const stack = specJson?.stack;
   const updatedAt = statusJson?.updated_at;
+  const buildLogPath = path.join(p, 'logs', 'build.log');
+  const lastLogAt = fs.existsSync(buildLogPath) ? fs.statSync(buildLogPath).mtime.toISOString() : undefined;
+  const isAlive = status === 'RUNNING' && lastLogAt
+    ? (Date.now() - new Date(lastLogAt).getTime()) < 120000
+    : undefined;
 
   const milestones: Array<{ label: string; ok: boolean; weight: number }> = [
     { label: 'Spec saved', ok: !!specJson, weight: 10 },
@@ -124,7 +131,7 @@ export function computeStatus(id: string): ProjectSummary {
   const pending = milestones.filter((m) => !m.ok).map((m) => m.label);
   const eta = estimateEta(progress, status);
 
-  return { id, status, stack, updatedAt, hints, zipPath, githubBranch: branch, progress, eta, done, pending };
+  return { id, status, stack, updatedAt, lastLogAt, isAlive, hints, zipPath, githubBranch: branch, progress, eta, done, pending };
 }
 
 export function getProjectDetails(id: string) {
