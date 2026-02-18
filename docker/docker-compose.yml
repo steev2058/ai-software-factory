@@ -45,12 +45,25 @@ services:
       dockerfile: Dockerfile
     container_name: asf-dashboard
     restart: unless-stopped
-    ports:
-      - "5680:3000"
+    env_file:
+      - /srv/ai-software-factory/.env
     environment:
       - PROJECTS_ROOT=/data/projects
     volumes:
       - /srv/ai-software-factory/projects:/data/projects:ro
+
+  asf-dashboard-proxy:
+    build:
+      context: /srv/ai-software-factory/docker/nginx
+      dockerfile: Dockerfile
+    container_name: asf-dashboard-proxy
+    restart: unless-stopped
+    depends_on:
+      - dashboard
+    env_file:
+      - /srv/ai-software-factory/.env
+    ports:
+      - "5680:80"
 
 volumes:
   postgres_data:

@@ -40,9 +40,14 @@ cp .env.example .env
 # then edit .env and fill real values
 ```
 
+On VPS, this project uses:
+- `/srv/ai-software-factory/.env`
+
 Required minimum:
 - `TELEGRAM_BOT_TOKEN`
 - `OPENROUTER_API_KEY`
+- `DASHBOARD_USER`
+- `DASHBOARD_PASS`
 
 ## 3) Start Services (Docker)
 
@@ -54,7 +59,7 @@ docker compose up -d --build
 ```
 
 - n8n UI: `http://localhost:5678`
-- Factory Dashboard: `http://localhost:5680/dashboard`
+- Factory Dashboard (protected by Basic Auth): `http://localhost:5680/dashboard`
 
 ## 4) Import n8n Workflows
 
@@ -104,6 +109,29 @@ Bot triggers n8n workflows, which fan out work across agents.
 ## 8) Factory Dashboard Usage
 
 Open: `http://localhost:5680/dashboard`
+
+Authentication:
+- All dashboard routes are behind HTTP Basic Auth via nginx proxy.
+- App middleware also enforces the same credentials (`DASHBOARD_USER` / `DASHBOARD_PASS`).
+
+Set credentials in:
+- `/srv/ai-software-factory/.env`
+
+Example:
+```env
+DASHBOARD_USER=admin
+DASHBOARD_PASS=replace_with_strong_password
+```
+
+Password rotation:
+```bash
+# edit credentials
+nano /srv/ai-software-factory/.env
+
+# restart proxy + dashboard
+cd /srv/ai-software-factory/docker
+docker compose up -d --build dashboard asf-dashboard-proxy
+```
 
 Features:
 
