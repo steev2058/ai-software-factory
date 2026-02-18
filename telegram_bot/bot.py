@@ -261,12 +261,27 @@ def monitor_notifications(token: str):
                 phase = pr.get('phase', 'UNKNOWN')
 
                 if phase in ('PASSED', 'FAILED') and last.get(pid) != phase:
-                    text = (
-                        f"🔔 تحديث المشروع {pid}\n"
-                        f"الحالة: {phase}\n"
-                        f"التقدم: {pr.get('percent', 0)}%\n"
-                        f"التقدير: {pr.get('eta', '-')}"
-                    )
+                    if phase == 'PASSED':
+                        branch = f"deliver/{pid}"
+                        dashboard_link = f"http://76.13.151.33:5680/projects/{pid}"
+                        zip_link = f"http://76.13.151.33:5680/api/projects/{pid}/zip"
+                        text = (
+                            f"🎉 تسليم المشروع جاهز\n"
+                            f"• Project: {pid}\n"
+                            f"• الحالة: PASSED ✅\n"
+                            f"• Branch: {branch}\n"
+                            f"• Dashboard: {dashboard_link}\n"
+                            f"• ZIP: {zip_link}\n\n"
+                            f"ملاحظة: رابط الـZIP يتطلب تسجيل دخول الداشبورد."
+                        )
+                    else:
+                        text = (
+                            f"🔔 تحديث المشروع {pid}\n"
+                            f"الحالة: FAILED ❌\n"
+                            f"التقدم: {pr.get('percent', 0)}%\n"
+                            f"التقدير: {pr.get('eta', '-')}"
+                        )
+
                     for cid in chats:
                         try:
                             requests.post(api, json={'chat_id': int(cid), 'text': text}, timeout=10)
