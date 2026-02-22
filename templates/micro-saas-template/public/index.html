@@ -1,29 +1,190 @@
 <!doctype html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Micro SaaS Tool</title></head>
-<body style="font-family:Arial,sans-serif;max-width:900px;margin:40px auto;padding:0 16px;">
-  <h1>Micro SaaS Tool</h1>
-  <p id="uid"></p>
-  <button onclick="loadCredits()">Refresh credits</button>
-  <pre id="credits"></pre>
-  <textarea id="prompt" rows="4" style="width:100%" placeholder="Type your request"></textarea><br/>
-  <button onclick="useTool()">Use 1 credit</button>
-  <pre id="out"></pre>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Micro Tool</title>
+  <style>
+    :root{
+      --bg:#f6f8fb;--card:#ffffff;--text:#0f172a;--muted:#64748b;--brand:#2563eb;--brand2:#1d4ed8;
+      --ok:#16a34a;--warn:#b45309;--border:#e2e8f0;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    .wrap{max-width:720px;margin:28px auto;padding:0 14px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 8px 24px rgba(2,8,23,.06)}
+    h1{margin:0 0 8px;font-size:28px;line-height:1.15}
+    .promise{margin:0 0 16px;color:var(--muted)}
+    .credits{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+    .pill{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:#fff}
+    .pill b{display:block;font-size:15px}
+    .label{font-size:12px;color:var(--muted)}
+    textarea{width:100%;min-height:118px;border:1px solid var(--border);border-radius:12px;padding:12px;font-size:15px;resize:vertical}
+    .row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+    button{border:0;background:var(--brand);color:#fff;padding:11px 16px;border-radius:10px;font-weight:600;cursor:pointer}
+    button:hover{background:var(--brand2)}
+    button.secondary{background:#fff;color:var(--text);border:1px solid var(--border)}
+    .out{margin-top:14px;border:1px solid var(--border);border-radius:12px;padding:12px;background:#fcfdff;white-space:pre-wrap;line-height:1.6;min-height:72px}
+    .hide{display:none}
+    .paywall{margin-top:14px;padding:14px;border:1px solid #fed7aa;background:#fff7ed;border-radius:12px}
+    .paywall h3{margin:0 0 6px}
+    .paywall p{margin:6px 0;color:#7c2d12}
+    .pricing,.faq{margin-top:14px;padding-top:10px;border-top:1px dashed var(--border)}
+    .pricing ul,.faq ul{margin:8px 0 0 18px;padding:0}
+    .small{font-size:12px;color:var(--muted)}
+    .ok{color:var(--ok)}
+    .warn{color:var(--warn)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>AI Micro Tool</h1>
+      <p class="promise">Turn one prompt into a polished answer in seconds — simple, fast, affordable.</p>
+
+      <div class="credits">
+        <div class="pill">
+          <span class="label">Free uses left today</span>
+          <b id="freeLeft">—</b>
+        </div>
+        <div class="pill">
+          <span class="label">Paid credits</span>
+          <b id="paidCredits">—</b>
+        </div>
+      </div>
+
+      <label class="label" for="prompt">Your request</label>
+      <textarea id="prompt" placeholder="Example: Write a short product description for a pet grooming service."></textarea>
+      <div class="row">
+        <button id="genBtn" onclick="useTool()">Generate</button>
+        <button class="secondary" onclick="loadCredits()">Refresh credits</button>
+      </div>
+      <p id="status" class="small"></p>
+
+      <div class="out" id="output">Your output will appear here.</div>
+
+      <div id="paywall" class="paywall hide">
+        <h3>Unlock 100 credits for $1</h3>
+        <p>No credits left. Continue instantly with a small top-up.</p>
+        <div class="row">
+          <button onclick="unlockPaidPack()">Unlock 100 credits for $1</button>
+        </div>
+        <p><b>Local Syria: Syriatel Cash / MTN Cash</b></p>
+        <p>Send your payment screenshot + this User ID to support, then request unlock.</p>
+        <p class="small" id="uidLine"></p>
+        <div class="row">
+          <button class="secondary" onclick="requestLocalUnlock()">Request local unlock</button>
+        </div>
+      </div>
+
+      <section class="pricing">
+        <h3>Pricing</h3>
+        <ul>
+          <li><b>Free:</b> 3 uses/day</li>
+          <li><b>$1:</b> 100 credits</li>
+        </ul>
+      </section>
+
+      <section class="faq">
+        <h3>FAQ</h3>
+        <ul>
+          <li><b>What counts as 1 credit?</b> One successful Generate request.</li>
+          <li><b>Do credits expire?</b> Paid credits do not expire by default. Free uses reset daily.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
 <script>
 const key='micro_saas_user_id';
 let uid=localStorage.getItem(key);
 if(!uid){uid='u_'+Math.random().toString(36).slice(2,10);localStorage.setItem(key,uid)}
-document.getElementById('uid').textContent='User ID: '+uid;
+document.getElementById('uidLine').textContent='User ID: '+uid;
+
+function setStatus(msg, cls=''){
+  const el=document.getElementById('status');
+  el.textContent=msg||'';
+  el.className='small '+cls;
+}
+
+function togglePaywall(show){
+  document.getElementById('paywall').classList.toggle('hide', !show);
+}
+
 async function loadCredits(){
-  const r=await fetch('/api/credits?user='+encodeURIComponent(uid));
-  document.getElementById('credits').textContent=JSON.stringify(await r.json(),null,2);
+  try{
+    const r=await fetch('/api/credits?user='+encodeURIComponent(uid));
+    const d=await r.json();
+    const free=Number(d.freeLeft||0), paid=Number(d.paid||0);
+    document.getElementById('freeLeft').textContent=String(free);
+    document.getElementById('paidCredits').textContent=String(paid);
+    togglePaywall((free+paid)<=0);
+    setStatus('Credits updated', 'ok');
+  }catch(e){
+    setStatus('Could not load credits right now.', 'warn');
+  }
 }
+
 async function useTool(){
-  const prompt=document.getElementById('prompt').value||'Say hello';
-  const r=await fetch('/api/use',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({user_id:uid,prompt})});
-  document.getElementById('out').textContent=JSON.stringify(await r.json(),null,2);
-  loadCredits();
+  const btn=document.getElementById('genBtn');
+  const prompt=(document.getElementById('prompt').value||'').trim() || 'Say hello';
+  btn.disabled=true; btn.textContent='Generating...';
+  setStatus('');
+  try{
+    const r=await fetch('/api/use',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({user_id:uid,prompt})
+    });
+    const d=await r.json();
+    if(!r.ok || d.error==='insufficient_credits'){
+      document.getElementById('output').textContent='You are out of credits. Please unlock to continue.';
+      togglePaywall(true);
+      setStatus('No credits left', 'warn');
+      return;
+    }
+    document.getElementById('output').textContent=d.result || 'Done.';
+    setStatus('Generated successfully', 'ok');
+    if(d.credits){
+      document.getElementById('freeLeft').textContent=String(d.credits.freeLeft ?? 0);
+      document.getElementById('paidCredits').textContent=String(d.credits.paid ?? 0);
+      togglePaywall((Number(d.credits.freeLeft||0)+Number(d.credits.paid||0))<=0);
+    } else {
+      await loadCredits();
+    }
+  }catch(e){
+    setStatus('Request failed. Try again.', 'warn');
+  }finally{
+    btn.disabled=false; btn.textContent='Generate';
+  }
 }
+
+async function unlockPaidPack(){
+  // Keeps same API surface (paypal webhook endpoint) for demo conversion flow
+  try{
+    const r=await fetch('/api/paypal/webhook',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({user_id:uid, resource:{custom_id:uid}, event_type:'checkout.completed'})
+    });
+    if(r.ok){
+      setStatus('100 credits unlocked. You can continue now.', 'ok');
+      togglePaywall(false);
+      await loadCredits();
+    } else {
+      setStatus('Payment unlock failed. Try local unlock.', 'warn');
+    }
+  }catch(e){
+    setStatus('Payment unlock failed. Try local unlock.', 'warn');
+  }
+}
+
+function requestLocalUnlock(){
+  const msg = encodeURIComponent(`Local unlock request\nUser ID: ${uid}\nNetwork: Syriatel Cash / MTN Cash\nI sent payment proof.`);
+  // simple CTA path (can be replaced by support channel link)
+  window.location.href = `mailto:support@petsy.company?subject=Local%20Unlock%20Request&body=${msg}`;
+}
+
 loadCredits();
 </script>
 </body>
