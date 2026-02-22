@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Micro SaaS Tool</title></head>
+<body style="font-family:Arial,sans-serif;max-width:900px;margin:40px auto;padding:0 16px;">
+  <h1>Micro SaaS Tool</h1>
+  <p id="uid"></p>
+  <button onclick="loadCredits()">Refresh credits</button>
+  <pre id="credits"></pre>
+  <textarea id="prompt" rows="4" style="width:100%" placeholder="Type your request"></textarea><br/>
+  <button onclick="useTool()">Use 1 credit</button>
+  <pre id="out"></pre>
+<script>
+const key='micro_saas_user_id';
+let uid=localStorage.getItem(key);
+if(!uid){uid='u_'+Math.random().toString(36).slice(2,10);localStorage.setItem(key,uid)}
+document.getElementById('uid').textContent='User ID: '+uid;
+async function loadCredits(){
+  const r=await fetch('/api/credits?user='+encodeURIComponent(uid));
+  document.getElementById('credits').textContent=JSON.stringify(await r.json(),null,2);
+}
+async function useTool(){
+  const prompt=document.getElementById('prompt').value||'Say hello';
+  const r=await fetch('/api/use',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({user_id:uid,prompt})});
+  document.getElementById('out').textContent=JSON.stringify(await r.json(),null,2);
+  loadCredits();
+}
+loadCredits();
+</script>
+</body>
+</html>

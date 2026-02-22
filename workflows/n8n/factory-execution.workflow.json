@@ -68,6 +68,58 @@
         1270,
         300
       ]
+    },
+    {
+      "parameters": {
+        "command": "=set -e\nPID='{{$item(0).$node['Parse Project ID'].json.project_id}}'\nchroot /host /srv/ai-software-factory/scripts/monetize_project.sh \"$PID\""
+      },
+      "id": "monetize-project",
+      "name": "Monetization Step",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        980,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=set -e\nPID='{{$item(0).$node['Parse Project ID'].json.project_id}}'\necho \"Reviewer Agent: validating monetized project $PID\" >> /data/projects/$PID/logs/build.log\n[ -f /data/projects/$PID/server.js ]"
+      },
+      "id": "reviewer-agent",
+      "name": "Reviewer Agent",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1220,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=set -e\nPID='{{$item(0).$node['Parse Project ID'].json.project_id}}'\necho \"Release Agent: final checks before deploy $PID\" >> /data/projects/$PID/logs/build.log"
+      },
+      "id": "release-agent",
+      "name": "Release Agent",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1460,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=set -e\nPID='{{$item(0).$node['Parse Project ID'].json.project_id}}'\nchroot /host /srv/ai-software-factory/scripts/deploy_project.sh \"$PID\" >> /data/projects/$PID/logs/build.log 2>&1"
+      },
+      "id": "deploy-step",
+      "name": "Deploy Step",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1700,
+        180
+      ]
     }
   ],
   "connections": {
@@ -97,7 +149,7 @@
       "main": [
         [
           {
-            "node": "Finalize",
+            "node": "Monetization Step",
             "type": "main",
             "index": 0
           }
@@ -109,6 +161,50 @@
         [
           {
             "node": "Parse Project ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monetization Step": {
+      "main": [
+        [
+          {
+            "node": "Reviewer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reviewer Agent": {
+      "main": [
+        [
+          {
+            "node": "Release Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Release Agent": {
+      "main": [
+        [
+          {
+            "node": "Deploy Step",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deploy Step": {
+      "main": [
+        [
+          {
+            "node": "Finalize",
             "type": "main",
             "index": 0
           }

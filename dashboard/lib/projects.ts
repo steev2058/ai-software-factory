@@ -71,7 +71,10 @@ export function computeStatus(id: string): ProjectSummary {
   const zipPath = detectZip(p, id);
   const branch = statusJson?.github_branch || (zipPath ? `deliver/${id}` : undefined);
   const previewUrl = statusJson?.preview_url || (fs.existsSync(path.join(p, 'preview', 'index.html')) ? `https://petsy.company/factory-preview/${id}/preview/index.html` : undefined);
-  const liveUrl = statusJson?.live_url || undefined;
+  const registryPath = path.join(PROJECTS_ROOT, 'registry.json');
+  const registry = safeReadJson(registryPath) || {};
+  const regEntry = registry?.[id] || null;
+  const liveUrl = statusJson?.live_url || regEntry?.url || undefined;
 
   let status: ProjectStatus = 'UNKNOWN';
 
