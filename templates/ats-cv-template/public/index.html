@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>ATS CV Checker</title>
+  <style>
+    :root{--bg:#f5f7fb;--card:#fff;--text:#0f172a;--muted:#64748b;--brand:#2563eb;--border:#e2e8f0}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Arial;background:var(--bg);color:var(--text)}
+    .wrap{max-width:760px;margin:24px auto;padding:0 14px}
+    .card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:18px}
+    .small{font-size:12px;color:var(--muted)}
+    textarea,input{width:100%;border:1px solid var(--border);border-radius:12px;padding:12px;font-size:14px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;align-items:center}
+    .btn{border:0;background:var(--brand);color:#fff;border-radius:10px;padding:11px 16px;font-weight:600;cursor:pointer}
+    .btn.alt{background:#fff;color:#0f172a;border:1px solid var(--border)}
+    .out{margin-top:14px;border:1px solid var(--border);border-radius:12px;padding:12px;background:#fcfdff;white-space:pre-wrap;position:relative}
+    .blurred{filter:blur(5px);user-select:none}
+    .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.65);font-weight:700;color:#0f172a;border-radius:12px;text-align:center;padding:10px}
+    .credits{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+    .pill{border:1px solid var(--border);border-radius:12px;padding:10px}
+    .hide{display:none}
+    .pay{margin-top:12px;padding:12px;border:1px solid #fed7aa;background:#fff7ed;border-radius:12px}
+    .lang{margin-left:auto}
+    .ok{color:#166534}
+  </style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+  <div class="row" style="margin-top:0">
+    <h1 id="title" style="margin:0">ATS CV Checker (Arabic + English)</h1>
+    <div class="lang">
+      <button class="btn alt" onclick="setLang('en')">EN</button>
+      <button class="btn alt" onclick="setLang('ar')">AR</button>
+    </div>
+  </div>
+  <p class="small" id="promise">Get a practical ATS score and exact improvements to increase interview chances.</p>
+
+  <div class="credits">
+    <div class="pill"><span class="small" id="freeLabel">Free uses left today</span><div id="freeLeft">—</div></div>
+    <div class="pill"><span class="small" id="paidLabel">Paid credits</span><div id="paidCredits">—</div></div>
+  </div>
+
+  <label class="small" id="jobTitleLabel">Target job title</label>
+  <input id="jobTitle" placeholder="e.g. Senior Backend Engineer"/>
+  <label class="small" id="cvLabel">CV text</label>
+  <textarea id="cvText" rows="8" placeholder="Paste full CV text..."></textarea>
+  <label class="small" id="jdLabel">Job description (optional)</label>
+  <textarea id="jobDesc" rows="6" placeholder="Paste JD for better matching..."></textarea>
+
+  <div class="row">
+    <button id="genBtn" class="btn" onclick="generate()">Generate</button>
+    <button class="btn alt" id="refreshBtn" onclick="loadCredits()">Refresh credits</button>
+    <button class="btn alt" id="sampleBtn" onclick="fillSample()">Try with sample</button>
+  </div>
+  <p class="small" id="trustLine">Used by 100+ job seekers to improve their CVs</p>
+  <p id="status" class="small"></p>
+
+  <div id="outputWrap" class="out">
+    <div id="output">Your ATS report will appear here.</div>
+    <div id="lockOverlay" class="overlay hide">Unlock full result for $1</div>
+  </div>
+
+  <div id="paywall" class="pay hide">
+    <b id="unlockTitle">Unlock 100 credits for $1</b>
+    <p class="small" id="paypalLine">PayPal checkout or local Syria (Syriatel/MTN). Include this User ID:</p>
+    <p class="small" id="uidLine"></p>
+    <div class="row">
+      <button class="btn alt" id="copyUidBtn" onclick="copyUserId()">Copy User ID</button>
+      <button class="btn alt" id="copyMsgBtn" onclick="copyMsg()">Copy message text</button>
+    </div>
+    <p id="paymentSuccess" class="small ok hide"></p>
+  </div>
+</div></div>
+
+<script>
+const t={
+  en:{
+    title:'ATS CV Checker (Arabic + English)',
+    promise:'Get a practical ATS score and exact improvements to increase interview chances.',
+    freeLabel:'Free uses left today',paidLabel:'Paid credits',jobTitleLabel:'Target job title',cvLabel:'CV text',jdLabel:'Job description (optional)',
+    generate:'Generate',refresh:'Refresh credits',sample:'Try with sample',trust:'Used by 100+ job seekers to improve their CVs',
+    unlock:'Unlock 100 credits for $1',paypal:'PayPal checkout or local Syria (Syriatel/MTN). Include this User ID:',copyUid:'Copy User ID',copyMsg:'Copy message text',
+    overlay:'Unlock full result for $1',placeholder:'Your ATS report will appear here.'
+  },
+  ar:{
+    title:'فاحص السيرة ATS (عربي + إنجليزي)',
+    promise:'احصل على نتيجة ATS عملية وتحسينات واضحة لزيادة فرص المقابلة.',
+    freeLabel:'الاستخدامات المجانية اليوم',paidLabel:'الرصيد المدفوع',jobTitleLabel:'المسمى الوظيفي المستهدف',cvLabel:'نص السيرة الذاتية',jdLabel:'الوصف الوظيفي (اختياري)',
+    generate:'تحليل',refresh:'تحديث الرصيد',sample:'جرب عينة',trust:'مستخدم من أكثر من 100 باحث عن عمل لتحسين سيرهم الذاتية',
+    unlock:'افتح 100 رصيد مقابل 1$',paypal:'باي بال أو دفع محلي (سيريتل/MTN). أرسل رقم المستخدم:',copyUid:'نسخ رقم المستخدم',copyMsg:'نسخ نص الرسالة',
+    overlay:'افتح النتيجة الكاملة مقابل 1$',placeholder:'سيظهر تقرير ATS هنا.'
+  }
+};
+let lang='en';
+function setLang(l){lang=l;const x=t[lang];title.textContent=x.title;promise.textContent=x.promise;freeLabel.textContent=x.freeLabel;paidLabel.textContent=x.paidLabel;jobTitleLabel.textContent=x.jobTitleLabel;cvLabel.textContent=x.cvLabel;jdLabel.textContent=x.jdLabel;genBtn.textContent=x.generate;refreshBtn.textContent=x.refresh;sampleBtn.textContent=x.sample;trustLine.textContent=x.trust;unlockTitle.textContent=x.unlock;paypalLine.textContent=x.paypal;copyUidBtn.textContent=x.copyUid;copyMsgBtn.textContent=x.copyMsg;lockOverlay.textContent=x.overlay;if(!lastResult)output.textContent=x.placeholder;document.body.dir=l==='ar'?'rtl':'ltr';}
+
+const key='micro_saas_user_id';let uid=localStorage.getItem(key);if(!uid){uid='u_'+Math.random().toString(36).slice(2,10);localStorage.setItem(key,uid)}
+uidLine.textContent='User ID: '+uid;
+let lastResult='';let prevPaid=0;
+const setS=(m)=>status.textContent=m||'';
+const showPay=(s)=>paywall.classList.toggle('hide',!s);
+const lockResult=(s)=>{lockOverlay.classList.toggle('hide',!s);output.classList.toggle('blurred',s)};
+
+function fillSample(){
+  jobTitle.value='Senior Backend Engineer';
+  cvText.value='Backend engineer with 5+ years building APIs with Node.js and SQL. Improved latency by 35%, built CI/CD pipelines, Dockerized services, and collaborated with product/design teams. Experienced in testing, monitoring, and mentoring juniors.';
+  jobDesc.value='Looking for backend engineer with Node.js, SQL, AWS, Docker, CI/CD, communication skills, and ownership mindset.';
+}
+
+async function loadCredits(){
+  try{
+    const r=await fetch('/api/credits?user='+encodeURIComponent(uid));const d=await r.json();
+    const f=Number(d.freeLeft||0),p=Number(d.paid||0);freeLeft.textContent=f;paidCredits.textContent=p;
+    showPay((f+p)<=0);
+    if(p>prevPaid){paymentSuccess.textContent=`Credits added successfully. You now have ${p} credits.`;paymentSuccess.classList.remove('hide');}
+    prevPaid=p;
+  }catch{}
+}
+
+async function generate(){
+  const cv=(cvText.value||'').trim(),jt=(jobTitle.value||'').trim(),jd=(jobDesc.value||'').trim();
+  if(!cv||!jt){setS(lang==='ar'?'يرجى إضافة السيرة والمسمى الوظيفي':'Please add CV text and target job title');return;}
+  genBtn.disabled=true;const old=genBtn.textContent;genBtn.textContent=lang==='ar'?'جاري التحليل...':'Analyzing...';setS('');
+  try{
+    const r=await fetch('/api/use',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({user_id:uid,cv_text:cv,job_title:jt,job_description:jd})});
+    const d=await r.json();
+    if(!r.ok){
+      if(d.error==='insufficient_credits'){
+        const preview=(lastResult||'ATS Score: ** / 100\nMissing keywords:\n- ...\n- ...\n\nImproved summary:\n...').slice(0,260)+'...';
+        output.textContent=preview; lockResult(true); showPay(true); setS(lang==='ar'?'انتهت الاستخدامات المجانية':'Free uses are over');
+      } else {
+        setS(d.message||d.error||'Request failed');
+      }
+      return;
+    }
+    lastResult=d.result||''; output.textContent=lastResult||'Done'; lockResult(false);
+    if(d.credits){freeLeft.textContent=d.credits.freeLeft;paidCredits.textContent=d.credits.paid;showPay((Number(d.credits.freeLeft||0)+Number(d.credits.paid||0))<=0);prevPaid=Number(d.credits.paid||0);}
+  } finally {genBtn.disabled=false;genBtn.textContent=old;}
+}
+
+function copyUserId(){navigator.clipboard.writeText(uid)}
+function copyMsg(){navigator.clipboard.writeText(`Local unlock request\nUser ID: ${uid}\nNetwork: Syriatel/MTN\nPayment proof attached.`)}
+
+setLang('en');
+loadCredits();
+</script>
+</body>
+</html>
