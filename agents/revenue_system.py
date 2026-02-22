@@ -344,9 +344,13 @@ def marketing_assets(env: Dict[str, str], project_id: str):
         'dm_scripts_ar.txt': '\n\n'.join((d.get('dm_scripts_ar') or [])[:5]),
     }
     for fn, c in files.items():
-        (mdir / fn).write_text(c)
+        if isinstance(c, (dict, list)):
+            c = json.dumps(c, ensure_ascii=False, indent=2)
+        (mdir / fn).write_text(str(c))
 
-    telegram_send(env, f"📣 Marketing queue for {project_id}\n\nFB#1:\n{files['syria_fb_post_1.txt'][:600]}\n\nReddit:\n{files['reddit_post.txt'][:600]}")
+    fb_preview = str(files.get('syria_fb_post_1.txt', ''))[:600]
+    reddit_preview = str(files.get('reddit_post.txt', ''))[:600]
+    telegram_send(env, f"📣 Marketing queue for {project_id}\n\nFB#1:\n{fb_preview}\n\nReddit:\n{reddit_preview}")
     log_action('agent3_marketing', 'generate', {'project_id': project_id, 'files': list(files.keys())})
 
 
