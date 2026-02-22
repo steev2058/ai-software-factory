@@ -161,3 +161,33 @@ Features:
 ---
 
 If you want, I can generate the full Docker + n8n workflow + bot starter code in the next step.
+
+## Autonomous 6-Agent Revenue System
+
+Runner:
+- `agents/revenue_system.py`
+
+n8n workflows created:
+- `workflows/n8n/agent-niche-research.workflow.json`
+- `workflows/n8n/agent-analytics.workflow.json`
+- `workflows/n8n/agent-optimization.workflow.json`
+- `workflows/n8n/agent-revenue-report.workflow.json`
+
+Output directories:
+- `research/ideas-YYYY-MM-DD.json`
+- `research/build-queue.json`
+- `reports/metrics-YYYY-MM-DD.json`
+- `reports/optimization-YYYY-MM-DD.json`
+- `reports/revenue-YYYY-MM-DD.md`
+- `reports/agent-actions.jsonl`
+
+Manual test commands:
+```bash
+python3 agents/revenue_system.py niche-research
+python3 agents/revenue_system.py product-builder
+python3 agents/revenue_system.py marketing --project-id <project_id>
+python3 agents/revenue_system.py analytics
+python3 agents/revenue_system.py optimization
+python3 agents/revenue_system.py revenue
+python3 agents/revenue_system.py full-cycle-demo
+```

@@ -1,0 +1,41 @@
+{
+  "name": "Agent-Optimization-Daily",
+  "nodes": [
+    {
+      "id": "cron1",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [260, 260],
+      "parameters": {
+        "rule": { "interval": [ { "triggerAtHour": 9, "triggerAtMinute": 0 } ] }
+      }
+    },
+    {
+      "id": "exec1",
+      "name": "Run Optimization",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [520, 260],
+      "parameters": {
+        "command": "python3 /srv/ai-software-factory/agents/revenue_system.py optimization"
+      }
+    },
+    {
+      "id": "exec2",
+      "name": "Run Product Builder",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [780, 260],
+      "parameters": {
+        "command": "python3 /srv/ai-software-factory/agents/revenue_system.py product-builder"
+      }
+    }
+  ],
+  "connections": {
+    "Daily Trigger": { "main": [[{ "node": "Run Optimization", "type": "main", "index": 0 }]] },
+    "Run Optimization": { "main": [[{ "node": "Run Product Builder", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

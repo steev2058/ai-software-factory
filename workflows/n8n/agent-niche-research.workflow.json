@@ -1,0 +1,41 @@
+{
+  "name": "Agent-Niche-Research-Daily",
+  "nodes": [
+    {
+      "id": "cron1",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [260, 260],
+      "parameters": {
+        "rule": { "interval": [ { "triggerAtHour": 8, "triggerAtMinute": 0 } ] }
+      }
+    },
+    {
+      "id": "exec1",
+      "name": "Run Niche Research",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [520, 260],
+      "parameters": {
+        "command": "python3 /srv/ai-software-factory/agents/revenue_system.py niche-research"
+      }
+    },
+    {
+      "id": "exec2",
+      "name": "Run Product Builder",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [780, 260],
+      "parameters": {
+        "command": "python3 /srv/ai-software-factory/agents/revenue_system.py product-builder"
+      }
+    }
+  ],
+  "connections": {
+    "Daily Trigger": { "main": [[{ "node": "Run Niche Research", "type": "main", "index": 0 }]] },
+    "Run Niche Research": { "main": [[{ "node": "Run Product Builder", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

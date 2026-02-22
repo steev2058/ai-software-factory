@@ -1,0 +1,30 @@
+{
+  "name": "Agent-Revenue-Daily",
+  "nodes": [
+    {
+      "id": "cron1",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [260, 260],
+      "parameters": {
+        "rule": { "interval": [ { "triggerAtHour": 10, "triggerAtMinute": 0 } ] }
+      }
+    },
+    {
+      "id": "exec1",
+      "name": "Run Revenue",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [520, 260],
+      "parameters": {
+        "command": "python3 /srv/ai-software-factory/agents/revenue_system.py revenue"
+      }
+    }
+  ],
+  "connections": {
+    "Daily Trigger": { "main": [[{ "node": "Run Revenue", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}
