@@ -28,6 +28,8 @@ OPENROUTER_MODEL=openai/gpt-4o-mini
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 PAYPAL_MODE=sandbox
 PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_WEBHOOK_ID=
 ENV
 
 # ensure /health contract present

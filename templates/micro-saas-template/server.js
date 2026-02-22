@@ -10,8 +10,17 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
 
+const PAYPAL_MODE = (process.env.PAYPAL_MODE || 'sandbox').toLowerCase();
+const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || '';
+const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || '';
+const PAYPAL_WEBHOOK_ID = process.env.PAYPAL_WEBHOOK_ID || '';
+const PAYPAL_BASE = PAYPAL_MODE === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
+
 app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({
+  limit: '1mb',
+  verify: (req, _res, buf) => { req.rawBody = buf.toString('utf8'); }
+}));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const db = new Database(path.join(__dirname, 'data.sqlite'));
@@ -32,6 +41,21 @@ CREATE TABLE IF NOT EXISTS payments (
   credits INTEGER,
   raw TEXT,
   created_at TEXT
+);
+CREATE TABLE IF NOT EXISTS purchases (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider TEXT NOT NULL,
+  provider_ref TEXT NOT NULL UNIQUE,
+  event_id TEXT,
+  user_id TEXT,
+  status TEXT,
+  amount REAL,
+  currency TEXT,
+  credits INTEGER DEFAULT 0,
+  verified INTEGER DEFAULT 0,
+  raw TEXT,
+  created_at TEXT,
+  updated_at TEXT
 );
 `);
 
@@ -79,8 +103,80 @@ function availableCredits(row) {
   return { freeLeft, paid, total: freeLeft + paid };
 }
 
+async function paypalAccessToken() {
+  const basic = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
+  const r = await fetch(`${PAYPAL_BASE}/v1/oauth2/token`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${basic}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: 'grant_type=client_credentials'
+  });
+  const data = await r.json();
+  if (!r.ok || !data?.access_token) {
+    throw new Error(`paypal_oauth_failed:${r.status}`);
+  }
+  return data.access_token;
+}
+
+async function verifyPaypalWebhook(headers, body) {
+  if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET || !PAYPAL_WEBHOOK_ID) {
+    return { ok: false, reason: 'paypal_env_missing' };
+  }
+
+  const transmission_id = headers['paypal-transmission-id'];
+  const transmission_time = headers['paypal-transmission-time'];
+  const cert_url = headers['paypal-cert-url'];
+  const auth_algo = headers['paypal-auth-algo'];
+  const transmission_sig = headers['paypal-transmission-sig'];
+
+  if (!transmission_id || !transmission_time || !cert_url || !auth_algo || !transmission_sig) {
+    return { ok: false, reason: 'paypal_headers_missing' };
+  }
+
+  const token = await paypalAccessToken();
+  const verifyResp = await fetch(`${PAYPAL_BASE}/v1/notifications/verify-webhook-signature`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      transmission_id,
+      transmission_time,
+      cert_url,
+      auth_algo,
+      transmission_sig,
+      webhook_id: PAYPAL_WEBHOOK_ID,
+      webhook_event: body
+    })
+  });
+
+  const verifyData = await verifyResp.json();
+  const ok = verifyResp.ok && verifyData?.verification_status === 'SUCCESS';
+  return { ok, reason: verifyData?.verification_status || `http_${verifyResp.status}`, raw: verifyData };
+}
+
+function extractPaypalUserId(event) {
+  return normalizeUser(
+    event?.resource?.custom_id ||
+    event?.resource?.invoice_id ||
+    event?.resource?.purchase_units?.[0]?.custom_id ||
+    event?.user_id
+  );
+}
+
+function extractPaypalProviderRef(event) {
+  return String(
+    event?.resource?.id ||
+    event?.id ||
+    ''
+  ).trim();
+}
+
 app.get('/health', (_req, res) => {
-  res.status(200).json({ ok: true, service: 'micro-saas-template', model: OPENROUTER_MODEL });
+  res.status(200).json({ ok: true, service: 'micro-saas-template', model: OPENROUTER_MODEL, paypal_mode: PAYPAL_MODE });
 });
 
 app.get('/api/credits', (req, res) => {
@@ -140,19 +236,60 @@ app.post('/api/use', async (req, res) => {
   return res.json({ ok: true, used: chargeType, credits: availableCredits(row), result: output });
 });
 
-app.post('/api/paypal/webhook', (req, res) => {
-  const user_id = normalizeUser(req.body?.user_id || req.body?.resource?.custom_id);
-  if (!user_id) return res.status(400).json({ error: 'user_id missing' });
+app.post('/api/paypal/webhook', async (req, res) => {
+  try {
+    const event = req.body || {};
+    const providerRef = extractPaypalProviderRef(event);
+    const eventId = String(event?.id || '').trim();
 
-  const row = ensureUser(user_id);
-  row.paid_credits = (row.paid_credits || 0) + 100;
-  row.updated_at = new Date().toISOString();
-  upsertUser.run(row);
+    if (!providerRef) {
+      return res.status(400).json({ ok: false, error: 'provider_ref_missing' });
+    }
 
-  db.prepare('INSERT INTO payments (user_id, source, amount_usd, credits, raw, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(user_id, 'paypal', 1, 100, JSON.stringify(req.body || {}), new Date().toISOString());
+    const verified = await verifyPaypalWebhook(req.headers, event);
+    if (!verified.ok) {
+      db.prepare('INSERT OR IGNORE INTO purchases (provider, provider_ref, event_id, status, verified, raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run('paypal', providerRef, eventId || null, `rejected:${verified.reason}`, 0, JSON.stringify({ event, verify: verified.raw || null }), new Date().toISOString(), new Date().toISOString());
+      return res.status(400).json({ ok: false, error: 'verification_failed', reason: verified.reason });
+    }
 
-  return res.json({ ok: true, user_id, credited: 100, credits: availableCredits(row) });
+    const eventType = String(event?.event_type || '');
+    if (eventType !== 'PAYMENT.CAPTURE.COMPLETED' && eventType !== 'CHECKOUT.ORDER.APPROVED') {
+      db.prepare('INSERT OR IGNORE INTO purchases (provider, provider_ref, event_id, status, verified, raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run('paypal', providerRef, eventId || null, `ignored:${eventType}`, 1, JSON.stringify(event), new Date().toISOString(), new Date().toISOString());
+      return res.json({ ok: true, ignored: true, event_type: eventType });
+    }
+
+    const existing = db.prepare('SELECT id, credits FROM purchases WHERE provider = ? AND provider_ref = ?').get('paypal', providerRef);
+    if (existing) {
+      return res.json({ ok: true, duplicate: true, provider_ref: providerRef });
+    }
+
+    const user_id = extractPaypalUserId(event);
+    if (!user_id) {
+      db.prepare('INSERT INTO purchases (provider, provider_ref, event_id, status, verified, raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run('paypal', providerRef, eventId || null, 'verified_but_user_missing', 1, JSON.stringify(event), new Date().toISOString(), new Date().toISOString());
+      return res.status(400).json({ ok: false, error: 'user_id_missing_in_event' });
+    }
+
+    const row = ensureUser(user_id);
+    row.paid_credits = (row.paid_credits || 0) + 100;
+    row.updated_at = new Date().toISOString();
+    upsertUser.run(row);
+
+    const amount = Number(event?.resource?.amount?.value || 1);
+    const currency = String(event?.resource?.amount?.currency_code || 'USD');
+
+    db.prepare('INSERT INTO purchases (provider, provider_ref, event_id, user_id, status, amount, currency, credits, verified, raw, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run('paypal', providerRef, eventId || null, user_id, 'credited', amount, currency, 100, 1, JSON.stringify(event), new Date().toISOString(), new Date().toISOString());
+
+    db.prepare('INSERT INTO payments (user_id, source, amount_usd, credits, raw, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(user_id, 'paypal_verified', amount, 100, JSON.stringify(event), new Date().toISOString());
+
+    return res.json({ ok: true, user_id, credited: 100, credits: availableCredits(row), provider_ref: providerRef });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'paypal_webhook_error', message: String(e?.message || e) });
+  }
 });
 
 app.post('/api/unlock/local', (req, res) => {
