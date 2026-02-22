@@ -69,10 +69,11 @@
         <div class="row">
           <button onclick="unlockPaidPack()">Unlock 100 credits for $1</button>
         </div>
-        <p><b>Local Syria: Syriatel Cash / MTN Cash</b></p>
-        <p>Send your payment screenshot + this User ID to support, then request unlock.</p>
+        <p><b>Pay with Syriatel/MTN</b></p>
+        <p>Local Syria: Syriatel Cash / MTN Cash. Send payment proof with your User ID, then request unlock.</p>
         <p class="small" id="uidLine"></p>
         <div class="row">
+          <button class="secondary" onclick="copyUserId()">Copy User ID</button>
           <button class="secondary" onclick="requestLocalUnlock()">Request local unlock</button>
         </div>
       </div>
@@ -177,6 +178,12 @@ async function unlockPaidPack(){
   }catch(e){
     setStatus('Payment unlock failed. Try local unlock.', 'warn');
   }
+}
+
+function copyUserId(){
+  navigator.clipboard.writeText(uid)
+    .then(()=>setStatus('User ID copied', 'ok'))
+    .catch(()=>setStatus('Could not copy User ID', 'warn'));
 }
 
 function requestLocalUnlock(){

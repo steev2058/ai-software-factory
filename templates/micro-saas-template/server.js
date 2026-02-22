@@ -57,6 +57,13 @@ CREATE TABLE IF NOT EXISTS purchases (
   created_at TEXT,
   updated_at TEXT
 );
+CREATE TABLE IF NOT EXISTS grants (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  credits INTEGER NOT NULL,
+  note TEXT,
+  created_at TEXT NOT NULL
+);
 `);
 
 const getUser = db.prepare('SELECT * FROM users WHERE user_id = ?');
@@ -306,10 +313,17 @@ app.post('/api/unlock/local', (req, res) => {
   row.updated_at = new Date().toISOString();
   upsertUser.run(row);
 
-  db.prepare('INSERT INTO payments (user_id, source, amount_usd, credits, raw, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(user_id, 'local_unlock', 0, Math.max(0, credits), JSON.stringify(req.body || {}), new Date().toISOString());
+  const grantCredits = Math.max(0, credits);
+  const note = String(req.body?.note || '').slice(0, 500);
+  const nowTs = new Date().toISOString();
 
-  return res.json({ ok: true, user_id, credited: Math.max(0, credits), credits: availableCredits(row) });
+  db.prepare('INSERT INTO payments (user_id, source, amount_usd, credits, raw, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(user_id, 'local_unlock', 0, grantCredits, JSON.stringify(req.body || {}), nowTs);
+
+  db.prepare('INSERT INTO grants (user_id, credits, note, created_at) VALUES (?, ?, ?, ?)')
+    .run(user_id, grantCredits, note, nowTs);
+
+  return res.json({ ok: true, user_id, credited: grantCredits, credits: availableCredits(row) });
 });
 
 app.listen(PORT, () => {

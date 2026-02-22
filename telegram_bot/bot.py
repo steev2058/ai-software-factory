@@ -215,9 +215,52 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "1) 🆕 مشروع جديد\n"
         "2) 📝 إضافة مواصفات\n"
         "3) 🚀 تشغيل مشروع\n"
-        "4) 📊 حالة المشروع",
+        "4) 📊 حالة المشروع\n"
+        "5) /grant <user_id> <credits> <note>",
         reply_markup=MAIN_KB,
     )
+
+
+async def grant_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    env = context.bot_data['env']
+    admin_token = (env.get('ADMIN_TOKEN') or '').strip()
+    base_url = (env.get('LOCAL_UNLOCK_BASE_URL') or 'https://demo-tool.petsy.company').rstrip('/')
+
+    if not admin_token:
+        await update.message.reply_text('❌ ADMIN_TOKEN غير مضبوط في .env')
+        return
+
+    parts = (update.message.text or '').split(maxsplit=3)
+    if len(parts) < 3:
+        await update.message.reply_text('Usage: /grant <user_id> <credits> <note>')
+        return
+
+    user_id = parts[1].strip()
+    try:
+        credits = int(parts[2].strip())
+    except Exception:
+        await update.message.reply_text('❌ credits لازم يكون رقم صحيح')
+        return
+
+    note = parts[3].strip() if len(parts) > 3 else 'manual_grant_from_telegram'
+    payload = {'user_id': user_id, 'credits': credits, 'note': note}
+
+    try:
+        r = requests.post(
+            f'{base_url}/api/unlock/local',
+            headers={'Authorization': f'Bearer {admin_token}', 'Content-Type': 'application/json'},
+            json=payload,
+            timeout=20,
+        )
+        data = r.json() if 'application/json' in (r.headers.get('content-type') or '') else {'raw': r.text[:400]}
+        if r.status_code >= 400:
+            await update.message.reply_text(f"❌ Grant failed ({r.status_code})\n{json.dumps(data, ensure_ascii=False)}")
+            return
+        await update.message.reply_text(
+            f"✅ Grant done\nuser_id: {user_id}\ncredited: {credits}\nendpoint: {base_url}/api/unlock/local"
+        )
+    except Exception as e:
+        await update.message.reply_text(f'❌ Request failed: {e}')
 
 
 async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -402,6 +445,7 @@ def main():
 
     app.add_handler(CommandHandler('start', start))
     app.add_handler(CommandHandler('help', help_cmd))
+    app.add_handler(CommandHandler('grant', grant_cmd))
     app.add_handler(CallbackQueryHandler(on_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
 
